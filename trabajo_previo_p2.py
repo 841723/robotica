@@ -2,8 +2,8 @@ def setSpeed(self, v, w):
     w_d = v/self.r + w*self.L/(2*self.r)
     w_i = v/self.r - w*self.L/(2*self.r)
     
-    speedDPS_left = degrees(wr[1])
-    speedDPS_right = degrees(wr[0])
+    speedDPS_left = degrees(w_i)
+    speedDPS_right = degrees(w_d)
     wr = [speedDPS_right, speedDPS_left]
     return wr
 
