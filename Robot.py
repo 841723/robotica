@@ -60,7 +60,10 @@ class Robot:
 
     def setSpeed(self, v,w):
         """ To be filled - These is all dummy sample code """
+        """ PAGINA 8 de transparencias """
         print("setting speed to %.2f %.2f" % (v, w))
+
+        m = [[1/self.r, 1/self.r], [-self.L/(2*self.r), self.L/(2*self.r)]]
 
         # compute the speed that should be set in each motor ...
 
@@ -75,7 +78,10 @@ class Robot:
 
     def readSpeed(self):
         """ To be filled"""
+        """ GUARDAR EL VALOR DE v Y w de la misma forma que se hace con la odometria(x,y,theta) """
+        """ devolver esos valores de v y w """
 
+        # return self.v.value, self.w.value
         return 0,0
 
     def readOdometry(self):
@@ -107,12 +113,15 @@ class Robot:
             # update odometry uses values that require mutex
             # (they are declared as value, so lock is implicitly done for atomic operations, BUT =+ is NOT atomic)
 
+            """ esto no sirve pq no es atomico """
+            """ esto no sirve porque se podria entrar en y leer odometria antes de la linea 120"""
             # Operations like += which involve a read and write are not atomic.
             with self.x.get_lock():
                 self.x.value+=1
 
             # to "lock" a whole set of operations, we can use a "mutex"
             self.lock_odometry.acquire()
+            """ esto si esta bien """
             #self.x.value+=1
             self.y.value+=1
             self.th.value+=1
@@ -139,6 +148,7 @@ class Robot:
 
 
             tEnd = time.clock()
+            """ para que se ejecute cada P segundos, teniendo en cuenta el tiempo que ha tardado en ejecutarse """
             time.sleep(self.P - (tEnd-tIni))
 
         #print("Stopping odometry ... X= %d" %(self.x.value))
