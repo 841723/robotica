@@ -6,6 +6,62 @@ import time
 from Robot import Robot
 
 
+def trayectoria1(robot, radioD, w_base):
+    # 1. Giro 90 grados
+    robot.setSpeed(0, -w_base)
+    time.sleep(np.pi/(2*w_base))
+    
+    # 2. Semicírculo radio d izquierda
+    robot.setSpeed(w_base * radioD, w_base)
+    time.sleep(np.pi*radioD/w_base)
+    
+    # 3. Círculo radio d derecha
+    robot.setSpeed(-w_base * radioD, -w_base)
+    time.sleep(2*np.pi*radioD/w_base)
+    
+    # 4. Semicírculo radio d izquierda
+    robot.setSpeed(w_base * radioD, w_base)
+    time.sleep(np.pi*radioD/w_base)
+
+
+def trayectoria2(robot, radioD, w_base, alfa, R, v_base):
+    # 1. Giro 90 grados
+    robot.setSpeed(0, w_base)
+    time.sleep(np.pi/(2*w_base))
+    
+    # 2. Cuarto de círculo radio alfa (derecha)
+    v_alfa = -w_base * alfa
+    robot.setSpeed(v_alfa, -w_base)
+    time.sleep(np.pi*v_alfa/(4*w_base))
+    
+    # 3. Línea recta longitud R
+    robot.setSpeed(v_base, 0)
+    time.sleep(R/v_base)
+    
+    # 4. Semicírculo radio d (derecha)
+    v_d = -w_base * radioD
+    robot.setSpeed(v_d, -w_base)
+    time.sleep(np.pi*v_d/(2*w_base))
+    
+    # 5. Línea recta longitud R
+    robot.setSpeed(v_base, 0)
+    time.sleep(R/v_base)
+    
+    # 6. Cuarto de círculo radio alfa (derecha)
+    robot.setSpeed(v_alfa, -w_base)
+    time.sleep(np.pi*v_alfa/(4*w_base))
+
+def trayectoria3(robot, v, tiempo):
+    for _ in range(4):
+        robot.setSpeed(v, 0)
+        time.sleep(tiempo)
+
+        # girar 90 grados
+        robot.setSpeed(0, np.pi/4)
+        time.sleep(np.pi/4)
+
+
+
 def main(args):
     try:
         if args.radioD < 0:
@@ -22,15 +78,8 @@ def main(args):
         robot.startOdometry()
 
         # 2. perform trajectory
-
-
-        # DUMMY CODE! delete when you have your own
-        robot.setSpeed(1,1)
-        print("Start : %s" % time.ctime())
-        time.sleep(3)
-        print("X value from main tmp %d" % robot.x.value)
-        time.sleep(3)
-        print("End : %s" % time.ctime())
+        trayectoria3(robot, 0.5, 1)
+    
 
         robot.lock_odometry.acquire()
         print("Odom values at main at the END: %.2f, %.2f, %.2f " % (robot.x.value, robot.y.value, robot.th.value))

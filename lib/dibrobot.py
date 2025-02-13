@@ -35,9 +35,16 @@ def dibrobot(loc_eje,c,tamano):
   
 def dibrecorrido(vc, wXr, time, steps = 10, color='red', tamano='g'):
   wXr_p = wXr
-  dibrobot(wXr_p, color, tamano)
+  if color != None:
+    dibuja = True
+
+  if dibuja:
+    dibrobot(wXr_p, color, tamano)
   for i in range(0, steps):
     wXr_p = simubot(vc, wXr_p, time/steps)
-    dibrobot(wXr_p, color, tamano)
+    if dibuja:
+      dibrobot(wXr_p, color, tamano)
 
   return wXr_p
+
+
