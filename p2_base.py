@@ -60,6 +60,8 @@ def trayectoria3(robot, v, tiempo):
         robot.setSpeed(0, np.pi/4)
         time.sleep(np.pi/4)
 
+    robot.setSpeed(0, 0)
+
 
 
 def main(args):
@@ -78,7 +80,14 @@ def main(args):
         robot.startOdometry()
 
         # 2. perform trajectory
-        trayectoria3(robot, 0.5, 1)
+        # trayectoria3(robot, 0.5, 1)
+        robot.setSpeed(0.4,0)
+        time.sleep(1)
+
+        robot.setSpeed(0, np.pi/2)
+        time.sleep(np.pi/2)
+
+        robot.setSpeed(0,0)
     
 
         robot.lock_odometry.acquire()

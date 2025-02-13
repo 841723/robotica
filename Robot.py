@@ -10,6 +10,8 @@ import sys
 from lib.utils import rad_to_deg, deg_to_rad
 from lib.simubot import simubot
 
+import numpy as np
+
 # tambien se podria utilizar el paquete de threading
 from multiprocessing import Process, Value, Array, Lock
 
@@ -24,8 +26,8 @@ class Robot:
 ######## UNCOMMENT and FILL UP all you think is necessary (following the suggested scheme) ########
 
         # Robot construction parameters
-        self.R = 24
-        #self.L = ??
+        self.R = 24/1000
+        self.L = 115/1000
         #self. ...
 
         ##################################################
@@ -56,6 +58,8 @@ class Robot:
         self.th = Value('d',0.0)
         self.v = Value('d',0.0)
         self.w = Value('d',0.0)
+        self.anguloDerecha = Value('d',0.0)
+        self.anguloIzquierda = Value('d',0.0)
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
 
         # if we want to block several instructions to be run together, we may want to use an explicit Lock
@@ -71,11 +75,14 @@ class Robot:
         """ PAGINA 8 de transparencias """
         print("setting speed to %.2f %.2f" % (v, w))
 
-        w_d = v/self.r + w*self.L/(2*self.r)
-        w_i = v/self.r - w*self.L/(2*self.r)
+        w_d = v/self.R + w*self.L/(2*self.R)
+        w_i = v/self.R - w*self.L/(2*self.R)
         
         speedDPS_left = rad_to_deg(w_i)
         speedDPS_right = rad_to_deg(w_d)
+
+        print("grados setting speed to %.2f %.2f" % (speedDPS_left, speedDPS_right))
+        print("rad setting speed to %.2f %.2f" % (w_i, w_d))
 
         # compute the speed that should be set in each motor ...
 
@@ -87,9 +94,6 @@ class Robot:
         self.BP.set_motor_dps(self.BP.PORT_B, speedDPS_left)
         self.BP.set_motor_dps(self.BP.PORT_C, speedDPS_right)
 
-        # return the speed set in each motor
-        return [speedDPS_right, speedDPS_left]
-
 
     def readSpeed(self):
         """ To be filled"""
@@ -100,7 +104,7 @@ class Robot:
         v = self.v.value
         w = self.w.value
         self.lock_odometry.release()
-        return [v, w]
+        return v, w
 
     def readOdometry(self):
         """ Returns current value of odometry estimation """
@@ -109,7 +113,7 @@ class Robot:
         y = self.y.value
         th = self.th.value
         self.lock_odometry.release()
-        return [x, y, th]
+        return x, y, th
 
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
@@ -133,40 +137,36 @@ class Robot:
                 Y=  %d, th=  %d \n" %(self.x.value, self.y.value, self.th.value) )
             #print("Dummy update of odometry ...., X=  %.2f" %(self.x.value) )
 
-            # update odometry uses values that require mutex
-            # (they are declared as value, so lock is implicitly done for atomic operations, BUT =+ is NOT atomic)
-
-
-            # to "lock" a whole set of operations, we can use a "mutex"
-            self.lock_odometry.acquire()
-            self.x.value+=1
-            self.y.value+=1
-            self.th.value+=1
-            self.lock_odometry.release()
-
             try:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
                 # (what we want to store).
                 sys.stdout.write("Reading encoder values .... \n")
                 [encoderIzquierda, encoderDerecha] = [self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA),
-                   self.BP.get_motor_encoder(self.PUERTO_MOTOR_DERECHA)]
+                   self.BP.get_motor_encoder(self.PORT_MOTOR_DERECHA)]
                 
-                # grados que esta girando cada rueda por ¿segundo?
-                wIzquierda = deg_to_rad(encoderIzquierda) / self.P
-                wDerecha = deg_to_rad(encoderDerecha) / self.P              
+                self.anguloDerecha.value = encoderDerecha
+                self.anguloIzquierda.value = encoderIzquierda
+                
+                wIzquierda = deg_to_rad(encoderIzquierda - self.anguloIzquierda.value) / self.P
+                wDerecha = deg_to_rad(encoderDerecha - self.anguloDerecha.value) / self.P
 
                 v = self.R/2 * (wDerecha + wIzquierda)
                 w = self.R/self.L * (wDerecha - wIzquierda)
 
-                vc = [v, w]
-                wXr = self.readOdometry()
-                
-                wXr2 = simubot(vc, wXr, self.P)
+                x_read, y_read, th_read = self.readOdometry()
+                dx, dy = 0, 0
 
+                if w == 0:
+                    dx = self.P*v*np.cos(th_read)
+                    dy = self.P*v*np.sin(th_read)
+                else:
+                    dx = v/w*(np.sin(th_read + w*self.P) - np.sin(th_read))
+                    dy = -v/w*(np.cos(th_read + w*self.P) - np.cos(th_read))
+                
                 self.lock_odometry.acquire()
-                self.x.value = wXr2[0]
-                self.y.value = wXr2[1]
-                self.th.value = wXr2[2]
+                self.x.value = x_read + dx
+                self.y.value = y_read + dy
+                self.th.value = th_read + w*self.P
                 self.v.value = v
                 self.w.value = w
                 self.lock_odometry.release()
