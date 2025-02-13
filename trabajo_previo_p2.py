@@ -79,17 +79,18 @@ def updateOdometry():
     
     
     
-    
-Descripción de trayectoria 1                 v                  w                    Tiempo de ejecución
-1. Giro 90 grados                   0                       -w_base                    pi/(2*w_base)
-2. Semicírculo radio d izquierda    v = w * radioD          w_base                     pi*radioD*v/w_base 
-3. Círculo radio d derecha          v = -w * radioD         -w_base                 2*pi*radioD*v/w_base
-4. Semicírculo radio d izquierda    v = w * radioD          w_base                 pi*radioD*v/w_base
+"""    
+Descripción de trayectoria 1                       v                    w                    Tiempo de ejecución
+1. Giro 90 grados                            0                       -w_base            pi/(2*w_base)
+2. Semicírculo radio d izquierda             v = w * radioD          w_base             pi*radioD*v/w_base 
+3. Círculo radio d derecha                   v = -w * radioD         -w_base            2*pi*radioD*v/w_base
+4. Semicírculo radio d izquierda             v = w * radioD          w_base             pi*radioD*v/w_base
 
-Descripción de trayectoria 2                      v                  w                          Tiempo de ejecución
-1. Giro 90 grados                                   0                w_base                     pi/(2*w_base)            
-2. Cuarto de círculo radio alfa (derecha)   v_alfa = -w * alfa      -w_base                     pi*v_alfa/(4*w_base)            
-3. Línea recta longitud R                      v_base                0                           R/v_base  
-4. Semicírculo radio d (derecha)            v_d  = -w * d         -w_base                       pi*v_d/(2*w_base)           
-5. Línea recta longitud R                       v_base                    0                      R/v_base       
-6. Cuarto de círculo radio alfa (derecha)  v_alfa = -w * alfa          -w_base                    pi*v_alfa/(4*w_base)            
+Descripción de trayectoria 2                       v                    w                   Tiempo de ejecución
+1. Giro 90 grados                            0                       w_base             pi/(2*w_base)            
+2. Cuarto de círculo radio alfa (derecha)    v_alfa = -w * alfa      -w_base            pi*v_alfa/(4*w_base)            
+3. Línea recta longitud R                    v_base                  0                  R/v_base  
+4. Semicírculo radio d (derecha)             v_d  = -w * d           -w_base            pi*v_d/(2*w_base)           
+5. Línea recta longitud R                    v_base                  0                  R/v_base       
+6. Cuarto de círculo radio alfa (derecha)    v_alfa = -w * alfa      -w_base            pi*v_alfa/(4*w_base)            
+"""
