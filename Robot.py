@@ -7,7 +7,7 @@ import brickpi3 # import the BrickPi3 drivers
 import time     # import the time library for the sleep function
 import sys
 
-from lib.utils import rad_to_deg, deg_to_rad
+from lib.utils import rad_to_deg, deg_to_rad, norm_pi
 from lib.simubot import simubot
 
 import numpy as np
@@ -74,8 +74,7 @@ class Robot:
         self.log_file.close()
         
         with open(self.log_filename, "a") as f:
-            f.write("%s\n" % time.strftime("%H:%M:%S %d/%m/%Y"))
-            f.write("x,y,th,v,w\n")
+            f.write("#%s\n" % time.strftime("%H:%M:%S %d/%m/%Y"))
         
     """ Set the speed of the robot. v is the linear speed in m/s and w is the angular speed in rad/s """
     def setSpeed(self, v,w):
@@ -113,7 +112,8 @@ class Robot:
         self.lock_odometry.acquire()
         x = self.x.value
         y = self.y.value
-        th = self.th.value
+        th = norm_pi(self.th.value)
+
         self.lock_odometry.release()
         return x, y, th
 
@@ -139,33 +139,41 @@ class Robot:
             try:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
                 # (what we want to store).
-                sys.stdout.write("Reading encoder values .... \n")
+                # sys.stdout.write("Reading encoder values .... \n")
                 [encoderIzquierda, encoderDerecha] = [self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA),
                    self.BP.get_motor_encoder(self.PORT_MOTOR_DERECHA)]
                 
+                
+                wIzquierda = float(deg_to_rad(encoderIzquierda - self.anguloIzquierda.value) / self.P)
+                wDerecha = float(deg_to_rad(encoderDerecha - self.anguloDerecha.value) / self.P)
+
                 self.anguloDerecha.value = encoderDerecha
                 self.anguloIzquierda.value = encoderIzquierda
 
-                with open(self.log_filename, "a") as f:
-                    f.write("encoderIzquierda%.2f,%.2f\n" % (encoderIzquierda, encoderDerecha))
-                    f.write("%.2f,%.2f\n" % (wIzquierda, wDerecha))
+                # with open(self.log_filename, "a") as f:
+                    # f.write("encoderIzquierda%.2f,encoderDerecha%.2f\n" % (encoderIzquierda, encoderDerecha))
+                    # f.write("wIzquierda%.2f,wDerecha%.2f\n" % (wIzquierda, wDerecha))
 
-                
-                wIzquierda = deg_to_rad(encoderIzquierda - self.anguloIzquierda.value) / self.P
-                wDerecha = deg_to_rad(encoderDerecha - self.anguloDerecha.value) / self.P
 
                 v = self.R/2 * (wDerecha + wIzquierda)
                 w = self.R/self.L * (wDerecha - wIzquierda)
 
                 x_read, y_read, th_read = self.readOdometry()
+                # with open(self.log_filename, "a") as f:
+                #     f.write("x_read%.2f,y_read%.2f,th_read%.2f\n" % (x_read, y_read, th_read))
+                #     f.write("v%.2f,w%.2f\n" % (v, w))
                 dx, dy = 0, 0
 
                 if w == 0:
                     dx = self.P*v*np.cos(th_read)
                     dy = self.P*v*np.sin(th_read)
+                    # with open(self.log_filename, "a") as f:
+                    #     f.write("w=0\n")
                 else:
                     dx = v/w*(np.sin(th_read + w*self.P) - np.sin(th_read))
                     dy = -v/w*(np.cos(th_read + w*self.P) - np.cos(th_read))
+                    # with open(self.log_filename, "a") as f:
+                    #     f.write("w!=0\n")
                 
                 self.lock_odometry.acquire()
                 self.x.value = x_read + dx
@@ -177,9 +185,6 @@ class Robot:
 
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
-                    f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (x_read, y_read, th_read, v, w))
-                
-
 
             except IOError as error:
                 #print(error)
@@ -197,7 +202,8 @@ class Robot:
 
             tEnd = time.clock()
             """ para que se ejecute cada P segundos, teniendo en cuenta el tiempo que ha tardado en ejecutarse """
-            time.sleep(self.P - (tEnd-tIni))
+            if tEnd - tIni < self.P:
+                time.sleep(self.P - (tEnd-tIni))
 
         #print("Stopping odometry ... X= %d" %(self.x.value))
         sys.stdout.write("Stopping odometry ... X=  %.2f, \
@@ -208,6 +214,9 @@ class Robot:
     def stopOdometry(self):
         self.finished.value = True
         #self.BP.reset_all()
+        
+    def reachAngle():
+        pass    
         
     def __del__(self):
         self.finished.value = True

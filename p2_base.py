@@ -3,6 +3,8 @@
 import argparse
 import numpy as np
 import time
+import math
+import sys
 from Robot import Robot
 
 # Avanza num_baldosas a velocidad v_base
@@ -18,27 +20,128 @@ def pruebaBaldosas(robot, v_base, num_baldosas):
 def pruebaGiros180(robot, w_base, num_giros):
     tiempo = (np.pi * num_giros) / w_base
     robot.setSpeed(0, w_base)
+    if(tiempo <0):
+        tiempo = -tiempo
     time.sleep(tiempo)
+
+def ocho(robot, radioD, w_base):
+
+    # 1. Giro 90 grados 
+    # 0 -> -pi/2
+    robot.setSpeed(0, w_base)
+    th = None
+    while th == None or th > -np.pi/2:
+        time.sleep(0.01)
+        _,_,th = robot.readOdometry()
+        # print("th = %.2f" % (th))
+
+    print("1. Giro 90 grados ")
+    print("th/pi = %.2f" % (th/np.pi))
+    
+    # 2. Semicírculo radio d izquierda
+    # -pi/2 -> pi/2
+    robot.setSpeed(w_base * radioD, -w_base)
+    th = None
+    while th == None or th < np.pi/2:
+        time.sleep(0.01)
+        _,_,th = robot.readOdometry()
+        # print("th = %.2f" % (th))
+
+    print("2. Semicírculo radio d izquierda")
+    print("th = %.2f" % (th))
+    print("th/pi = %.2f" % (th/np.pi))
+
+    # 3.1. Círculo radio d derecha
+    # pi/2 -> -pi/2
+    robot.setSpeed(w_base * radioD, w_base)
+    th = None
+    while th == None or th > -np.pi/2:
+        time.sleep(0.01)
+        _,_,th = robot.readOdometry()
+        # print("th = %.2f" % (th))
+
+    print("3.1. Círculo radio d derecha")
+    print("th = %.2f" % (th))
+    print("th/pi = %.2f" % (th/np.pi))
+
+    # 3.2. Círculo radio d derecha
+    # -pi/2 -> pi/2
+    robot.setSpeed(w_base * radioD, w_base)
+    th = None
+    while th == None or th < np.pi/2:
+        time.sleep(0.01)
+        _,_,th = robot.readOdometry()
+        # print("th = %.2f" % (th))
+        
+    print("3.2. Círculo radio d derecha")
+    print("th = %.2f" % (th))
+    print("th/pi = %.2f" % (th/np.pi))
+    
+    # 4. Semicírculo radio d izquierda
+    # pi/2 -> -pi/2
+    robot.setSpeed(w_base * radioD, -w_base)
+    th = None
+    while th == None or th > -np.pi/2:
+        time.sleep(0.01)
+        _,_,th = robot.readOdometry()
+        # print("th = %.2f" % (th))
+
+    print("4. Semicírculo radio d izquierda")
+    print("th = %.2f" % (th))
+    print("th/pi = %.2f" % (th/np.pi))
+
+    robot.setSpeed(0, 0)
+
+
     
 
 # TODO: HECHO CON TIEMPO DE ESPERA
 # Realiza la forma de un 8 con el robot
 def trayectoria1(robot, radioD, w_base):
-    # 1. Giro 90 grados
-    robot.setSpeed(0, -w_base)
-    time.sleep(np.pi/(2*w_base))
+    # # 1. Giro 90 grados
+    # robot.setSpeed(0, -w_base)
+    # time.sleep(np.pi/(2*w_base))
     
-    # 2. Semicírculo radio d izquierda
-    robot.setSpeed(w_base * radioD, w_base)
-    time.sleep(np.pi*radioD/w_base)
+    # # 2. Semicírculo radio d izquierda
+    # robot.setSpeed(w_base * radioD, w_base)
+    # time.sleep(np.pi*radioD/w_base)
     
-    # 3. Círculo radio d derecha
-    robot.setSpeed(-w_base * radioD, -w_base)
-    time.sleep(2*np.pi*radioD/w_base)
+    # # 3. Círculo radio d derecha
+    # robot.setSpeed(w_base * radioD, -w_base)
+    # time.sleep(2*np.pi*radioD/w_base)
     
-    # 4. Semicírculo radio d izquierda
-    robot.setSpeed(w_base * radioD, w_base)
-    time.sleep(np.pi*radioD/w_base)
+    # # 4. Semicírculo radio d izquierda
+    # robot.setSpeed(w_base * radioD, w_base)
+    # time.sleep(np.pi*radioD/w_base)
+    
+    base_angular_speed = math.pi/6
+    # Do a 8-trajectory
+    # 1. turn 90 degrees
+    robot.setSpeed(0, -base_angular_speed)
+    time.sleep(1)
+
+    # 2. half circle with radius d to the left in 5 seconds
+    w = math.pi/5
+    v = w * radioD
+    sys.stdout.write("v =  %.2f \n" %(v))
+    robot.setSpeed(v, w)
+    time.sleep(5)
+
+    # 3. circle with radius d to the right in 10 seconds
+    w = -2*math.pi/10
+    v = w * radioD
+    sys.stdout.write("v =  %.2f \n" %(v))
+    robot.setSpeed(-v, w)
+    time.sleep(10)
+
+    # 4. half circle with radius d to the left in 5 seconds
+    w = math.pi/5
+    v = w * radioD
+    sys.stdout.write("v =  %.2f \n" %(v))
+    robot.setSpeed(v, w)
+    time.sleep(5)
+
+    robot.setSpeed(0, 0)
 
 
 def trayectoria2(robot, radioD, w_base, alfa, R, v_base):
@@ -68,6 +171,7 @@ def trayectoria2(robot, radioD, w_base, alfa, R, v_base):
     robot.setSpeed(v_alfa, -w_base)
     time.sleep(np.pi*v_alfa/(4*w_base))
 
+
 def trayectoria3(robot, v, tiempo):
     for _ in range(4):
         robot.setSpeed(v, 0)
@@ -96,12 +200,22 @@ def main(args):
         # 1. launch updateOdometry Process()
         robot.startOdometry()
 
-        # 2. perform trajectory
-        print("pruebaBaldosas(robot, 0.1, 1)")
-        pruebaBaldosas(robot, 0.1, 1)
+        # # 2. perform trajectory
+        # print("pruebaBaldosas(robot, 0.1, 1)")
+        # pruebaBaldosas(robot, 0.1, 1)
+        # # print("pruebaBaldosas(robot, 20, 5)")
+        # # pruebaBaldosas(robot, 0.2, 5)
+
+        ocho(robot, 0.2, .5)
         
-        print("pruebaGiros180(robot, 1, 1)")
-        pruebaGiros180(robot, 1, 2)
+    
+        # print("pruebaGiros180(robot, 1, 1)")
+        # pruebaGiros180(robot, 1, 2)
+        # pruebaGiros180(robot, -1, 2)
+        
+        # print("trayectoria1(robot, args.radioD, 0.5)")
+        # trayectoria1(robot, 0.4, 0.5)
+        
         # trayectoria3(robot, 0.5, 1)
         # robot.setSpeed(0.4,0)
         # time.sleep(1)
@@ -111,8 +225,7 @@ def main(args):
 
         # robot.setSpeed(0,0)
         # trayectoria1(robot, args.radioD, 0.5)
-        print("pruebaBaldosas(robot, 20, 5)")
-        pruebaBaldosas(robot, 0.2, 5)
+        
     
 
         robot.lock_odometry.acquire()
