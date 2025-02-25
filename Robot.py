@@ -147,8 +147,9 @@ class Robot:
                 self.anguloIzquierda.value = encoderIzquierda
 
                 with open(self.log_filename, "a") as f:
-                    f.write("%.2f,%.2f\n" % (encoderIzquierda, encoderDerecha))
-                    f.write("%.2f,%.2f\n" % (w))
+                    f.write("encoderIzquierda%.2f,%.2f\n" % (encoderIzquierda, encoderDerecha))
+                    f.write("%.2f,%.2f\n" % (wIzquierda, wDerecha))
+
                 
                 wIzquierda = deg_to_rad(encoderIzquierda - self.anguloIzquierda.value) / self.P
                 wDerecha = deg_to_rad(encoderDerecha - self.anguloDerecha.value) / self.P
