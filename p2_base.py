@@ -5,7 +5,17 @@ import numpy as np
 import time
 from Robot import Robot
 
+# Avanza num_baldosas a velocidad v_base
+# Cada baldosa tiene un tamaño de 0.4 m
+def pruebaBaldosas(robot, v_base, num_baldosas):
+    TAMANO_BALDOSA = 0.4
+    tiempo = (TAMANO_BALDOSA * num_baldosas) / v_base
+    robot.setSpeed(v_base, 0)
+    time.sleep(tiempo)
+    
 
+# TODO: HECHO CON TIEMPO DE ESPERA
+# Realiza la forma de un 8 con el robot
 def trayectoria1(robot, radioD, w_base):
     # 1. Giro 90 grados
     robot.setSpeed(0, -w_base)
@@ -80,14 +90,17 @@ def main(args):
         robot.startOdometry()
 
         # 2. perform trajectory
+        pruebaBaldosas(robot, 0.1, 1)
         # trayectoria3(robot, 0.5, 1)
-        robot.setSpeed(0.4,0)
-        time.sleep(1)
+        # robot.setSpeed(0.4,0)
+        # time.sleep(1)
 
-        robot.setSpeed(0, np.pi/2)
-        time.sleep(np.pi/2)
+        # robot.setSpeed(0, np.pi/2)
+        # time.sleep(np.pi/2)
 
-        robot.setSpeed(0,0)
+        # robot.setSpeed(0,0)
+        # trayectoria1(robot, args.radioD, 0.5)
+        pruebaBaldosas(robot, 20, 5)
     
 
         robot.lock_odometry.acquire()

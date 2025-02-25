@@ -16,7 +16,7 @@ import numpy as np
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0]):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None):
         """
         Initialize basic robot params. \
 
@@ -28,14 +28,10 @@ class Robot:
         # Robot construction parameters
         self.R = 24/1000
         self.L = 115/1000
-        #self. ...
-
-        ##################################################
-        # Motors and sensors setup
 
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
-        self.PORT_MOTOR_PINZA = self.BP.PORT_A
+        # self.PORT_MOTOR_PINZA = self.BP.PORT_A
         self.PORT_MOTOR_DERECHA = self.BP.PORT_B
         self.PORT_MOTOR_IZQUIERDA = self.BP.PORT_C
 
@@ -67,12 +63,24 @@ class Robot:
 
         # odometry update period --> UPDATE value!
         self.P = 0.1
+        if log_filename is not None:
+            self.log_filename = log_filename
+        else:
+            self.log_filename = "odometry_" + time.strftime("%H%M%S_%d/%m/%Y") + ".log"
+        
+        self.log_file = open(self.log_filename, "w")
+        self.log_file.close()
+        
+        self.log_file = open(self.log_filename, "a")
 
-
-
+    def __del__(self):
+        self.log_file.close()
+        self.setSpeed(0,0)
+        self.BP.reset_all()
+        
+    """ Set the speed of the robot. v is the linear speed in m/s and w is the angular speed in rad/s """
     def setSpeed(self, v,w):
-        """ To be filled - These is all dummy sample code """
-        """ PAGINA 8 de transparencias """
+        
         print("setting speed to %.2f %.2f" % (v, w))
 
         w_d = v/self.R + w*self.L/(2*self.R)
@@ -81,24 +89,19 @@ class Robot:
         speedDPS_left = rad_to_deg(w_i)
         speedDPS_right = rad_to_deg(w_d)
 
-        print("grados setting speed to %.2f %.2f" % (speedDPS_left, speedDPS_right))
-        print("rad setting speed to %.2f %.2f" % (w_i, w_d))
-
-        # compute the speed that should be set in each motor ...
-
-        #speedPower = 100
-        #BP.set_motor_power(BP.PORT_B + BP.PORT_C, speedPower)
-
-        # speedDPS_left = 180
-        # speedDPS_right = 180
+        # print("grados setting speed to %.2f %.2f" % (speedDPS_left, speedDPS_right))
+        # print("rad setting speed to %.2f %.2f" % (w_i, w_d))
         self.BP.set_motor_dps(self.BP.PORT_B, speedDPS_left)
         self.BP.set_motor_dps(self.BP.PORT_C, speedDPS_right)
+        
+        self.lock_odometry.acquire()
+        self.v.value = v
+        self.w.value = w
+        self.lock_odometry.release()
 
 
     def readSpeed(self):
-        """ To be filled"""
-        """ GUARDAR EL VALOR DE v Y w de la misma forma que se hace con la odometria(x,y,theta) """
-        """ devolver esos valores de v y w """
+        """ Read the current speed of the robot given by the odometry. Returns v, w """
 
         self.lock_odometry.acquire()
         v = self.v.value
@@ -130,12 +133,9 @@ class Robot:
             # current processor time in a floating point value, in seconds
             tIni = time.clock()
 
-            # compute updates
 
-            ######## UPDATE FROM HERE with your code (following the suggested scheme) ########
-            sys.stdout.write("Dummy update of odometry ...., X=  %d, \
+            sys.stdout.write("Update of odometry ...., X=  %d, \
                 Y=  %d, th=  %d \n" %(self.x.value, self.y.value, self.th.value) )
-            #print("Dummy update of odometry ...., X=  %.2f" %(self.x.value) )
 
             try:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
@@ -170,6 +170,8 @@ class Robot:
                 self.v.value = v
                 self.w.value = w
                 self.lock_odometry.release()
+
+                self.log_filename.write("%.2f,%.2f,%.2f,%.2f,%.2f\n",self.x.value, self.y.value, self.th.value, self.v.value, self.w.value)
                 
 
 
