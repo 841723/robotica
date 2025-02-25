@@ -63,20 +63,19 @@ class Robot:
 
         # odometry update period --> UPDATE value!
         self.P = 0.1
+        self.log_filename = None
         if log_filename is not None:
             self.log_filename = log_filename
         else:
-            self.log_filename = "odometry_" + time.strftime("%H%M%S_%d/%m/%Y") + ".log"
+            self.log_filename = "odometry_" + time.strftime("%H_%M_%S_%d_%m_%Y") + ".log"
+        self.log_filename = "log/" + self.log_filename
         
         self.log_file = open(self.log_filename, "w")
         self.log_file.close()
         
-        self.log_file = open(self.log_filename, "a")
-
-    def __del__(self):
-        self.log_file.close()
-        self.setSpeed(0,0)
-        self.BP.reset_all()
+        with open(self.log_filename, "a") as f:
+            f.write("%s\n" % time.strftime("%H:%M:%S %d/%m/%Y"))
+            f.write("x,y,th,v,w\n")
         
     """ Set the speed of the robot. v is the linear speed in m/s and w is the angular speed in rad/s """
     def setSpeed(self, v,w):
@@ -134,8 +133,8 @@ class Robot:
             tIni = time.clock()
 
 
-            sys.stdout.write("Update of odometry ...., X=  %d, \
-                Y=  %d, th=  %d \n" %(self.x.value, self.y.value, self.th.value) )
+            # sys.stdout.write("Update of odometry ...., X=  %d, \
+            #     Y=  %d, th=  %d \n" %(self.x.value, self.y.value, self.th.value) )
 
             try:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
@@ -146,6 +145,10 @@ class Robot:
                 
                 self.anguloDerecha.value = encoderDerecha
                 self.anguloIzquierda.value = encoderIzquierda
+
+                with open(self.log_filename, "a") as f:
+                    f.write("%.2f,%.2f\n" % (encoderIzquierda, encoderDerecha))
+                    f.write("%.2f,%.2f\n" % (w))
                 
                 wIzquierda = deg_to_rad(encoderIzquierda - self.anguloIzquierda.value) / self.P
                 wDerecha = deg_to_rad(encoderDerecha - self.anguloDerecha.value) / self.P
@@ -171,7 +174,9 @@ class Robot:
                 self.w.value = w
                 self.lock_odometry.release()
 
-                self.log_filename.write("%.2f,%.2f,%.2f,%.2f,%.2f\n",self.x.value, self.y.value, self.th.value, self.v.value, self.w.value)
+                with open(self.log_filename, "a") as f:
+                    f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                    f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (x_read, y_read, th_read, v, w))
                 
 
 
@@ -202,4 +207,9 @@ class Robot:
     def stopOdometry(self):
         self.finished.value = True
         #self.BP.reset_all()
+        
+    def __del__(self):
+        self.finished.value = True
+        self.setSpeed(0,0)
+        self.BP.reset_all()
 

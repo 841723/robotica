@@ -13,6 +13,13 @@ def pruebaBaldosas(robot, v_base, num_baldosas):
     robot.setSpeed(v_base, 0)
     time.sleep(tiempo)
     
+# Gira num_giros a velocidad w_base
+# Cada giro es de 180 grados
+def pruebaGiros180(robot, w_base, num_giros):
+    tiempo = (np.pi * num_giros) / w_base
+    robot.setSpeed(0, w_base)
+    time.sleep(tiempo)
+    
 
 # TODO: HECHO CON TIEMPO DE ESPERA
 # Realiza la forma de un 8 con el robot
@@ -82,7 +89,7 @@ def main(args):
 
         # Instantiate Odometry. Default value will be 0,0,0
         # robot = Robot(init_position=args.pos_ini)
-        robot = Robot()
+        robot = Robot(log_filename="test.log")
 
         print("X value at the beginning from main X= %.2f" %(robot.x.value))
 
@@ -90,7 +97,11 @@ def main(args):
         robot.startOdometry()
 
         # 2. perform trajectory
+        print("pruebaBaldosas(robot, 0.1, 1)")
         pruebaBaldosas(robot, 0.1, 1)
+        
+        print("pruebaGiros180(robot, 1, 1)")
+        pruebaGiros180(robot, 1, 2)
         # trayectoria3(robot, 0.5, 1)
         # robot.setSpeed(0.4,0)
         # time.sleep(1)
@@ -100,7 +111,8 @@ def main(args):
 
         # robot.setSpeed(0,0)
         # trayectoria1(robot, args.radioD, 0.5)
-        pruebaBaldosas(robot, 20, 5)
+        print("pruebaBaldosas(robot, 20, 5)")
+        pruebaBaldosas(robot, 0.2, 5)
     
 
         robot.lock_odometry.acquire()

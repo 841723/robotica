@@ -12,6 +12,8 @@ echo "Copying files to Raspberry Pi..."
 scp $LOCAL_DIR/*.py $REMOTE_HOST:$REMOTE_DIR
 # Ensure the remote lib directory exists
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/lib"
+# Ensure the remote log directory exists
+ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/log"
 
 # Copy all files from lib directory to remote
 scp $LOCAL_DIR/lib/* $REMOTE_HOST:$REMOTE_DIR/lib
