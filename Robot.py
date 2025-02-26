@@ -215,8 +215,96 @@ class Robot:
         self.finished.value = True
         #self.BP.reset_all()
         
-    def reachAngle():
-        pass    
+    def angleDistance(self, th2, th1, verbose=False):
+        """
+        Returns the distance between two angles in the range [0, pi]
+        :param th1: First angle
+        :param th2: Second angle
+        :return: Angle distance
+        """
+        first_distance = (th2 - th1 ) % (2*np.pi)
+        second_distance = (th1 - th2 ) % (2*np.pi)
+        if verbose:
+            print("First distance: ", first_distance, "Second distance: ", second_distance)
+        return min(first_distance, second_distance)
+        
+    
+    def alcanzarAngulo(self, ang_final, tolerancia=0.2):
+        time.sleep(self.P)
+        
+        t_siguiente = time.time()
+        [_, _, ang_actual] = self.readOdometry()
+        
+        distancia_a_final = self.angleDistance(ang_final, ang_actual)
+        # first_step = 3
+
+        while True: 
+            ultima_distancia = distancia_a_final
+            t_siguiente += self.P
+            t_actual = time.time()
+            if t_siguiente > t_actual:
+                time.sleep(t_siguiente - time.time()) # sleep for a period
+                
+            [_, _, ang_actual] = self.readOdometry()
+            distancia_a_final = self.angleDistance(ang_final, ang_actual)
+
+            print("Ang_actual: ", ang_actual, "Error: ", distancia_a_final)
+            if distancia_a_final > ultima_distancia:
+            # and first_step <= 1:
+                # if we stop getting closer we stop
+                print("Error increasing")
+                break
+            # if first_step > 0:
+            #     first_step -= 1 # sometimes the first step is in the wrong direction
+    
+        print("Angulo deseado: ", ang_final, "Angulo alcanzado: ", ang_actual)
+        print("Error: ", distancia_a_final)
+            
+        # return first_step == 1 or first_step == 2
+        
+    # TODO: solo sigue en línea recta, 
+    # se puede añadir para que cambie el ángulo si no llega en alguna de las coordenadas (PID)
+    def alcanzarPosicion(self, x_deseado, y_deseado, tolerancia=0.1):
+        """
+        Espera hasta que el robot alcance una posición específica.
+        :param x_deseado: Posición x deseada
+        :param y_deseado: Posición y deseada
+        :param tolerancia: Tolerancia de posición
+        """
+        time.sleep(self.P)
+        
+        t_siguiente = time.time()
+        [x_actual, y_actual, _] = self.readOdometry()
+        
+        diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+        primer_paso = True
+
+        print("Posición inicial:", x_actual, y_actual)
+        print("Esperando hasta alcanzar:", x_deseado, y_deseado)
+
+        while True:
+            diferencia_posicion_anterior = diferencia_posicion
+            t_siguiente += self.P
+            t_actual = time.time()
+            if t_siguiente > t_actual:
+                time.sleep(t_siguiente - t_actual)
+            
+            [x_actual, y_actual, _] = self.readOdometry()
+            diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+            
+            
+            print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
+            
+            if diferencia_posicion > diferencia_posicion_anterior and not primer_paso:
+                print("Error aumentando")
+                break
+            
+            primer_paso = False
+        
+        print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
+        print("Error:", diferencia_posicion)
+    
+        
         
     def __del__(self):
         self.finished.value = True
