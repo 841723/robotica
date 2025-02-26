@@ -9,7 +9,7 @@ if __name__ == "__main__":
         print("Leyendo archivo de coordenadas")
         coordenadas = coordenadas.read().splitlines()
 
-        coordenadas = coordenadas[::10]
+        coordenadas = coordenadas[::10] # TODO: PONER CON LÍMITE, NO DIVISIÓN
         
         # print(coordenadas)
         for i in range(len(coordenadas)):
@@ -38,7 +38,7 @@ if __name__ == "__main__":
                     coordenada[0],
                     coordenada[1],
                     coordenada[2]
-                ],'','g')
+                ],'','p')
 
     # plt.xlim(-5,5)
     # plt.ylim(-5,5)

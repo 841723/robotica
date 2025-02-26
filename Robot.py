@@ -26,8 +26,8 @@ class Robot:
 ######## UNCOMMENT and FILL UP all you think is necessary (following the suggested scheme) ########
 
         # Robot construction parameters
-        self.R = 24/1000
-        self.L = 115/1000
+        self.R = 28/1000 # TODO: ESTE TAMAÑO NO TIENE SENTIDO
+        self.L = 114/1000
 
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
@@ -113,7 +113,8 @@ class Robot:
         x = self.x.value
         y = self.y.value
         th = norm_pi(self.th.value)
-
+        # th = self.th.value
+        
         self.lock_odometry.release()
         return x, y, th
 
@@ -193,7 +194,6 @@ class Robot:
             #sys.stdout.write("Encoder (%s) increased (in degrees) B: %6d  C: %6d " %
             #        (type(encoder1), encoder1, encoder2))
 
-
             # save LOG
             # Need to decide when to store a log with the updated odometry ...
 
@@ -217,28 +217,26 @@ class Robot:
         
     def angleDistance(self, th2, th1, verbose=False):
         """
-        Returns the distance between two angles in the range [0, pi]
+        Returns the distance between two angles in the range [0, 2pi]
         :param th1: First angle
         :param th2: Second angle
         :return: Angle distance
         """
         first_distance = (th2 - th1 ) % (2*np.pi)
         second_distance = (th1 - th2 ) % (2*np.pi)
-        if verbose:
-            print("First distance: ", first_distance, "Second distance: ", second_distance)
+        print("First distance: ", first_distance, "Second distance: ", second_distance)
         return min(first_distance, second_distance)
-        
+
     
-    def alcanzarAngulo(self, ang_final, tolerancia=0.2):
+    def alcanzarAngulo(self, ang_final, tolerancia=0.03):
+        error_count = 0
         time.sleep(self.P)
-        
+        print(ang_final)
         t_siguiente = time.time()
         [_, _, ang_actual] = self.readOdometry()
-        
         distancia_a_final = self.angleDistance(ang_final, ang_actual)
-        # first_step = 3
 
-        while True: 
+        while distancia_a_final > tolerancia: 
             ultima_distancia = distancia_a_final
             t_siguiente += self.P
             t_actual = time.time()
@@ -248,12 +246,20 @@ class Robot:
             [_, _, ang_actual] = self.readOdometry()
             distancia_a_final = self.angleDistance(ang_final, ang_actual)
 
-            print("Ang_actual: ", ang_actual, "Error: ", distancia_a_final)
-            if distancia_a_final > ultima_distancia:
+            print("Ang_actual: ", ang_actual,
+                  "Ang_final: ", ang_final,
+                  "Error: ", distancia_a_final)
+            if distancia_a_final > ultima_distancia :
             # and first_step <= 1:
+                error_count += 1
+                if error_count > 3:
                 # if we stop getting closer we stop
-                print("Error increasing")
-                break
+                    print("Error increasing", distancia_a_final, "is greater than", ultima_distancia)
+                    
+                    break
+            else:
+                error_count = 0
+                
             # if first_step > 0:
             #     first_step -= 1 # sometimes the first step is in the wrong direction
     
@@ -264,7 +270,7 @@ class Robot:
         
     # TODO: solo sigue en línea recta, 
     # se puede añadir para que cambie el ángulo si no llega en alguna de las coordenadas (PID)
-    def alcanzarPosicion(self, x_deseado, y_deseado, tolerancia=0.1):
+    def alcanzarPosicion(self, x_deseado, y_deseado, tolerancia=0.03):
         """
         Espera hasta que el robot alcance una posición específica.
         :param x_deseado: Posición x deseada
@@ -282,7 +288,7 @@ class Robot:
         print("Posición inicial:", x_actual, y_actual)
         print("Esperando hasta alcanzar:", x_deseado, y_deseado)
 
-        while True:
+        while diferencia_posicion > tolerancia:
             diferencia_posicion_anterior = diferencia_posicion
             t_siguiente += self.P
             t_actual = time.time()
@@ -295,11 +301,12 @@ class Robot:
             
             print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
             
-            if diferencia_posicion > diferencia_posicion_anterior and not primer_paso:
+            if diferencia_posicion > diferencia_posicion_anterior:
+            # and not primer_paso:
                 print("Error aumentando")
                 break
             
-            primer_paso = False
+            # primer_paso = False
         
         print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
         print("Error:", diferencia_posicion)

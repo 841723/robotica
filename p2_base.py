@@ -103,27 +103,29 @@ def pruebaGiros180(robot, w_base, num_giros):
 
 def trayectoriaOcho(robot, radioD, w_base):
     # 1. Giro 90 grados 
-    robot.alcanzarAngulo(robot, -np.pi/2)
+    robot.setSpeed(0, w_base)
+    robot.alcanzarAngulo(-np.pi/2)
     print("1. Giro 90 grados ")
 
     # 2. Semicírculo radio d izquierda
     robot.setSpeed(w_base * radioD, -w_base)
-    robot.alcanzarAngulo(robot, np.pi/2)
+    # robot.alcanzarPosicion(radioD*2, 0)
+    robot.alcanzarAngulo(np.pi/2)
     print("2. Semicírculo radio d izquierda")
 
     # 3.1. Círculo radio d derecha
     robot.setSpeed(w_base * radioD, w_base)
-    robot.alcanzarAngulo(robot, -np.pi/2)
+    robot.alcanzarAngulo(-np.pi/2)
     print("3.1. Círculo radio d derecha")
 
     # 3.2. Círculo radio d derecha
     robot.setSpeed(w_base * radioD, w_base)
-    robot.alcanzarAngulo(robot, np.pi/2)
+    robot.alcanzarAngulo(np.pi/2)
     print("3.2. Círculo radio d derecha")
 
     # 4. Semicírculo radio d izquierda
     robot.setSpeed(w_base * radioD, -w_base)
-    robot.alcanzarAngulo(robot, -np.pi/2)
+    robot.alcanzarAngulo(-np.pi/2)
     print("4. Semicírculo radio d izquierda")
 
     robot.setSpeed(0, 0)
@@ -165,30 +167,32 @@ def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
     print("distancia_centros = %.2f" % (distancia_centros))
     
     # 1. Giro 90 grados
-    robot.alcanzarAngulo(np.pi/2)
     print("1. Giro 90 grados")
+    robot.setSpeed(0, -w_base)
+    robot.alcanzarAngulo(np.pi/2)
+    
 
     # 2. Cuarto de círculo radio radioAlfa (izquierda)
-    v_alfa = -w_base * radioAlfa
-    robot.setSpeed(v_alfa, -w_base)
-    robot.alcanzarAngulo(angulo_tangencia - np.pi/2)
     print("2. Cuarto de círculo radio radioAlfa (izquierda)")
+    v_alfa = w_base * radioAlfa
+    robot.setSpeed(v_alfa, w_base)
+    robot.alcanzarAngulo(angulo_tangencia - np.pi/2)
     robot.setSpeed(0, 0)
 
     # 3. Línea recta longitud R
     x, y, th = robot.readOdometry()
-    robot.setSpeed(v_base, 0)
     x_obj = x + R * math.cos(th)
     y_obj = y + R * math.sin(th)
+    robot.setSpeed(v_base, 0)
     robot.alcanzarPosicion(x_obj, y_obj)
     print("3. Línea recta longitud R")
     robot.setSpeed(0, 0)
 
     # 4. Semicírculo radio d (derecha)
-    v_d = -w_base * radioD
-    robot.setSpeed(v_d, -w_base)
-    robot.alcanzarAngulo(0)
-    robot.alcanzarAngulo(-angulo_tangencia) # TODO: exactamente esto??
+    v_d = w_base * radioD
+    robot.setSpeed(v_d, w_base)
+    robot.alcanzarAngulo(-np.pi/2)
+    robot.alcanzarAngulo(-np.pi/2-angulo_tangencia) # TODO: exactamente esto??
     print("4. Semicírculo radio d (derecha)")
     robot.setSpeed(0, 0)
 
@@ -202,8 +206,8 @@ def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
     robot.setSpeed(0, 0)
 
     # 6. Cuarto de círculo radio radioAlfa (derecha)
-    robot.setSpeed(v_alfa, -w_base)
-    robot.alcanzarAngulo(-np.pi/2)
+    robot.setSpeed(v_alfa, w_base)
+    robot.alcanzarAngulo(np.pi/2)
     print("6. Cuarto de círculo radio radioAlfa (derecha)")
 
     robot.setSpeed(0, 0)
@@ -229,18 +233,18 @@ def main(args):
         # pruebaBaldosas(robot, 0.1, 1)
         # print("pruebaBaldosas(robot, 20, 5)")
         # pruebaBaldosas(robot, 0.2, 5)
-        print("pruebaBaldosasOdometria(0.2, 5)")
-        pruebaBaldosasOdometria(robot, 0.2, 5)
+        # print("pruebaBaldosasOdometria(0.2, 5)")
+        # pruebaBaldosasOdometria(robot, 0.2, 2)
 
         # print("pruebaGiros180(robot, 1, 1)")
         # pruebaGiros180(robot, 1, 2)
         # pruebaGiros180(robot, -1, 2)
         
-        print("trayectoria 8")
-        trayectoriaOcho(robot, 0.4, 0.5)
-        
+        # print("trayectoria 8")
+        # trayectoriaOcho(robot, 0.4, 0.5)
+
         print("trayectoria 2")
-        trayectoria2(robot, 0.4, 0.2, 1, 0.5, 0.1)
+        trayectoria2(robot, 0.6, 0.4, 0.6, 0.5, 0.2)
     
         # TODO: PARAMETRIZAR CON LOS ARGUMENTOS
 
@@ -252,13 +256,13 @@ def main(args):
         # This currently unconfigure the sensors, disable the motors,
         # and restore the LED to the control of the BrickPi3 firmware.
         robot.stopOdometry()
-
-
+        
     except KeyboardInterrupt:
-    # except the program gets interrupted by Ctrl+C on the keyboard.
-    # THIS IS IMPORTANT if we want that motors STOP when we Ctrl+C ...
-        robot.stopOdometry()
+        # except the program gets interrupted by Ctrl+C on the keyboard.
+        # THIS IS IMPORTANT if we want that motors STOP when we Ctrl+C ...
+        print("Keyboard interrupt")
         robot.setSpeed(0, 0)
+        robot.stopOdometry()
         print("STOPPED BY USER")
 
 if __name__ == "__main__":
@@ -273,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument("-R", "--R", help="Longitud de la recta de la trayectoria 2 (m)",
                         type=float, default=0.6)
     parser.add_argument("-l", "--log", help="Log file",
-                        type=str, default="test.log")
+                        type=str, default="test-tang.log") 
     # TODO: velocidad base /angular??
     args = parser.parse_args()
 
