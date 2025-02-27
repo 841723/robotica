@@ -59,7 +59,7 @@ class Robot:
         self.lock_odometry = Lock()
         
         # odometry update period --> UPDATE value!
-        self.P = 0.1
+        self.P = 0.05
         self.log_filename = None
         if log_filename is not None:
             self.log_filename = log_filename
@@ -182,7 +182,7 @@ class Robot:
         return min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi)))
 
     
-    def waitAngle(self, ang_final, tolerancia=0.03):
+    def waitAngle(self, ang_final, tolerancia=0.000005):
         """
         Espera hasta que el robot alcance un ángulo específico.
         Se recibe un ángulo en radianes y se espera hasta que el robot alcance ese ángulo.
@@ -239,6 +239,7 @@ class Robot:
 
         print("Posición inicial:", x_actual, y_actual)
         print("Esperando hasta alcanzar:", x_deseado, y_deseado)
+        error_count = 0
 
         while diferencia_posicion > tolerancia:
             diferencia_posicion_anterior = diferencia_posicion
@@ -254,12 +255,11 @@ class Robot:
             print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
             
             if diferencia_posicion > diferencia_posicion_anterior:
-            # and not primer_paso:
-                print("Error aumentando")
-                break
-            
-            # primer_paso = False
-        
+                error_count += 1
+                if error_count > 3:
+                    # si nos alejamos de la posición deseada, paramos
+                    print("Error aumentando", diferencia_posicion, "; es mayor que", diferencia_posicion_anterior)
+                    break
         print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
         print("Error:", diferencia_posicion)
 

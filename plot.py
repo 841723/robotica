@@ -12,7 +12,7 @@ if __name__ == "__main__":
         ultima_coordenada = coordenadas[-1]
         coord_def = []
 
-        coord_def = coordenadas[::10]
+        coord_def = coordenadas[::30]
         coord_def.append(ultima_coordenada)
         
         for i in range(len(coord_def)):
@@ -35,7 +35,7 @@ if __name__ == "__main__":
                     coordenada[0],
                     coordenada[1],
                     coordenada[2]
-                ],'','p')
+                ],'red','p')
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(True)

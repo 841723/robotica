@@ -127,7 +127,37 @@ def trayectoriaOcho(robot, radioD, w_base):
     robot.waitAngle(-np.pi/2)
     print("4. Semicírculo radio d izquierda")
 
-    robot.setSpeed(0, 0)
+    robot.setSpeed(0, 0)    
+
+
+
+def pruebaOcho(robot, radioD, w_base):
+    # # 1. Giro 90 grados 
+    # robot.setSpeed(0, -w_base)
+    # robot.waitAngle(-np.pi/2)
+    # print("1. Giro 90 grados ")
+
+    # # 2. Semicírculo radio d izquierda
+    # robot.setSpeed(w_base * radioD, w_base)
+    # robot.waitAngle(np.pi/2)
+    # print("2. Semicírculo radio d izquierda")
+
+    # 3.1. Círculo radio d derecha
+    robot.setSpeed(w_base * radioD, -w_base)
+    robot.waitPosition(0, 2*radioD)
+    print("3.1. Círculo radio d derecha")
+
+    # # 3.2. Círculo radio d derecha
+    # robot.setSpeed(w_base * radioD, -w_base)
+    # robot.waitPosition(0, 2*radioD)
+    # print("3.2. Círculo radio d derecha")
+
+    # # 4. Semicírculo radio d izquierda
+    # robot.setSpeed(w_base * radioD, w_base)
+    # robot.waitPosition(0, 0)
+    # print("4. Semicírculo radio d izquierda")
+
+    robot.setSpeed(0, 0)    
 
 
 def trayectoria2Esperas(robot, radioD, w_base, alfa, R, v_base):
@@ -237,11 +267,12 @@ def main(args):
 
         if testcase == 0:
             # print(f"trayectoriaOcho(robot, {args.radioD}, 0.4)")
-            trayectoriaOcho(robot, args.radioD, 0.4)
+            # trayectoriaOcho(robot, args.radioD, 0.4)
+            pruebaOcho(robot, args.radioD, 0.4)
         elif testcase == 1:
             # print(f"trayectoriaTang(robot, {args.radioD}, {args.radioAlfa}, 0.6, 0.1, 0.1)")
-            trayectoriaTang(robot, args.radioD, args.radioAlfa, args.R, 0.4, 0.2)   
-        else:       
+            trayectoriaTang(robot, args.radioAlfa, args.radioD, args.R, 0.4, 0.2)   
+        else:
             # print("pruebaBaldosasOdometria(robot, 0.2, 4)")
             pruebaBaldosasOdometria(robot, 0.2, 4)
 
@@ -252,7 +283,9 @@ def main(args):
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
         # and restore the LED to the control of the BrickPi3 firmware.
+        time.sleep(3)
         robot.stopOdometry()
+
         
     except KeyboardInterrupt:
         # except the program gets interrupted by Ctrl+C on the keyboard.
@@ -268,7 +301,7 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--radioD", help="Radio para el 8 (m)",
-                        type=float, default=0.4)
+                        type=float, default=0.2)
     parser.add_argument("-a", "--radioAlfa", help="Radio para alfa de la trayectoria 2 (m)",
                         type=float, default=0.4)
     parser.add_argument("-R", "--R", help="Longitud de la recta de la trayectoria 2 (m)",

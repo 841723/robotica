@@ -12,6 +12,8 @@ FILE="p2_base.py"
 # Copy all files from lib directory to remote
 echo "Copying files to Raspberry Pi..."
 scp $LOCAL_DIR/*.py $REMOTE_HOST:$REMOTE_DIR
+scp $LOCAL_DIR/*.sh $REMOTE_HOST:$REMOTE_DIR
+
 # Ensure the remote lib directory exists
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/lib"
 # Ensure the remote log directory exists
@@ -23,7 +25,7 @@ scp $LOCAL_DIR/lib/* $REMOTE_HOST:$REMOTE_DIR/lib
 # If copy was successful, execute the Python script
 if [ $? -eq 0 ]; then
     echo "Files copied successfully. Running $FILE..."
-    ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $FILE -t1 "
+    ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $FILE -t0"
 
     # Show plot 
     # ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $PLOT_FILE $LOG_FILE"
