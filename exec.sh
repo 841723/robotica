@@ -23,7 +23,7 @@ scp $LOCAL_DIR/lib/* $REMOTE_HOST:$REMOTE_DIR/lib
 # If copy was successful, execute the Python script
 if [ $? -eq 0 ]; then
     echo "Files copied successfully. Running $FILE..."
-    ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $FILE"
+    ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $FILE -t1 "
 
     # Show plot 
     # ssh $REMOTE_HOST "cd $REMOTE_DIR && python3 $PLOT_FILE $LOG_FILE"

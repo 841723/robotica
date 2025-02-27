@@ -20,7 +20,7 @@ def pruebaBaldosas(robot, v_base, num_baldosas):
 def pruebaBaldosasOdometria(robot, v_base, num_baldosas):
     TAMANO_BALDOSA = 0.4
     robot.setSpeed(v_base, 0)
-    robot.alcanzarPosicion(robot.x.value + TAMANO_BALDOSA * num_baldosas,
+    robot.waitPosition(robot.x.value + TAMANO_BALDOSA * num_baldosas,
                            robot.y.value)
     
 # Gira num_giros a velocidad w_base
@@ -103,29 +103,28 @@ def pruebaGiros180(robot, w_base, num_giros):
 
 def trayectoriaOcho(robot, radioD, w_base):
     # 1. Giro 90 grados 
-    robot.setSpeed(0, w_base)
-    robot.alcanzarAngulo(-np.pi/2)
+    robot.setSpeed(0, -w_base)
+    robot.waitAngle(-np.pi/2)
     print("1. Giro 90 grados ")
 
     # 2. Semicírculo radio d izquierda
-    robot.setSpeed(w_base * radioD, -w_base)
-    # robot.alcanzarPosicion(radioD*2, 0)
-    robot.alcanzarAngulo(np.pi/2)
+    robot.setSpeed(w_base * radioD, w_base)
+    robot.waitAngle(np.pi/2)
     print("2. Semicírculo radio d izquierda")
 
     # 3.1. Círculo radio d derecha
-    robot.setSpeed(w_base * radioD, w_base)
-    robot.alcanzarAngulo(-np.pi/2)
+    robot.setSpeed(w_base * radioD, -w_base)
+    robot.waitAngle(-np.pi/2)
     print("3.1. Círculo radio d derecha")
 
     # 3.2. Círculo radio d derecha
-    robot.setSpeed(w_base * radioD, w_base)
-    robot.alcanzarAngulo(np.pi/2)
+    robot.setSpeed(w_base * radioD, -w_base)
+    robot.waitAngle(np.pi/2)
     print("3.2. Círculo radio d derecha")
 
     # 4. Semicírculo radio d izquierda
-    robot.setSpeed(w_base * radioD, -w_base)
-    robot.alcanzarAngulo(-np.pi/2)
+    robot.setSpeed(w_base * radioD, w_base)
+    robot.waitAngle(-np.pi/2)
     print("4. Semicírculo radio d izquierda")
 
     robot.setSpeed(0, 0)
@@ -159,7 +158,7 @@ def trayectoria2Esperas(robot, radioD, w_base, alfa, R, v_base):
     time.sleep(np.pi*v_alfa/(4*w_base))
 
 
-def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
+def trayectoriaTang(robot, radioD, radioAlfa, R, w_base, v_base):
     
     distancia_centros = math.sqrt(R**2 - (radioD-radioAlfa)**2)
     angulo_tangencia = math.pi/2 + math.asin((radioD-radioAlfa)/distancia_centros)
@@ -168,15 +167,15 @@ def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
     
     # 1. Giro 90 grados
     print("1. Giro 90 grados")
-    robot.setSpeed(0, -w_base)
-    robot.alcanzarAngulo(np.pi/2)
+    robot.setSpeed(0, w_base)
+    robot.waitAngle(np.pi/2)
     
 
     # 2. Cuarto de círculo radio radioAlfa (izquierda)
     print("2. Cuarto de círculo radio radioAlfa (izquierda)")
     v_alfa = w_base * radioAlfa
-    robot.setSpeed(v_alfa, w_base)
-    robot.alcanzarAngulo(angulo_tangencia - np.pi/2)
+    robot.setSpeed(v_alfa, -w_base)
+    robot.waitAngle(angulo_tangencia - np.pi/2)
     robot.setSpeed(0, 0)
 
     # 3. Línea recta longitud R
@@ -184,15 +183,15 @@ def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
     x_obj = x + R * math.cos(th)
     y_obj = y + R * math.sin(th)
     robot.setSpeed(v_base, 0)
-    robot.alcanzarPosicion(x_obj, y_obj)
+    robot.waitPosition(x_obj, y_obj)
     print("3. Línea recta longitud R")
     robot.setSpeed(0, 0)
 
     # 4. Semicírculo radio d (derecha)
     v_d = w_base * radioD
-    robot.setSpeed(v_d, w_base)
-    robot.alcanzarAngulo(-np.pi/2)
-    robot.alcanzarAngulo(-np.pi/2-angulo_tangencia) # TODO: exactamente esto??
+    robot.setSpeed(v_d, -w_base)
+    robot.waitAngle(-np.pi/2)
+    robot.waitAngle(-np.pi/2-angulo_tangencia)
     print("4. Semicírculo radio d (derecha)")
     robot.setSpeed(0, 0)
 
@@ -201,52 +200,50 @@ def trayectoria2(robot, radioD, radioAlfa, R, w_base,  v_base):
     robot.setSpeed(v_base, 0)
     x_obj = x + R * math.cos(th)
     y_obj = y + R * math.sin(th)
-    robot.alcanzarPosicion(x_obj, y_obj)
+    robot.waitPosition(x_obj, y_obj)
     print("5. Línea recta longitud R")
     robot.setSpeed(0, 0)
 
     # 6. Cuarto de círculo radio radioAlfa (derecha)
-    robot.setSpeed(v_alfa, w_base)
-    robot.alcanzarAngulo(np.pi/2)
+    robot.setSpeed(v_alfa, -w_base)
+    robot.waitAngle(np.pi/2)
     print("6. Cuarto de círculo radio radioAlfa (derecha)")
 
     robot.setSpeed(0, 0)
 
+
+def trayectorioGiros(robot, w_base):
+    # 1. Giro 90 grados a la izquierda
+    robot.setSpeed(0, w_base)
+    robot.waitAngle(np.pi/2) 
+    
 
 def main(args):
     try:
         if args.radioD < 0 or args.radioAlfa < 0:
             print('radioD y radioAlfa tienen que ser positivos')
             exit(1)
-
-        # Instantiate Odometry. Default value will be 0,0,0
-        # robot = Robot(init_position=args.pos_ini)
+            
         robot = Robot(log_filename=args.log)
 
         print("X value at the beginning from main X= %.2f" %(robot.x.value))
 
+        # testcase = 0 # ochos
+        # testcase = 1 # 2 esferas
+        # testcase = 2 # otro
+        testcase = args.testcase
         # 1. launch updateOdometry Process()
         robot.startOdometry()
 
-        # # 2. perform trajectory
-        # print("pruebaBaldosas(robot, 0.1, 1)")
-        # pruebaBaldosas(robot, 0.1, 1)
-        # print("pruebaBaldosas(robot, 20, 5)")
-        # pruebaBaldosas(robot, 0.2, 5)
-        # print("pruebaBaldosasOdometria(0.2, 5)")
-        # pruebaBaldosasOdometria(robot, 0.2, 2)
-
-        # print("pruebaGiros180(robot, 1, 1)")
-        # pruebaGiros180(robot, 1, 2)
-        # pruebaGiros180(robot, -1, 2)
-        
-        # print("trayectoria 8")
-        # trayectoriaOcho(robot, 0.4, 0.5)
-
-        print("trayectoria 2")
-        trayectoria2(robot, 0.6, 0.4, 0.6, 0.5, 0.2)
-    
-        # TODO: PARAMETRIZAR CON LOS ARGUMENTOS
+        if testcase == 0:
+            # print(f"trayectoriaOcho(robot, {args.radioD}, 0.4)")
+            trayectoriaOcho(robot, args.radioD, 0.4)
+        elif testcase == 1:
+            # print(f"trayectoriaTang(robot, {args.radioD}, {args.radioAlfa}, 0.6, 0.1, 0.1)")
+            trayectoriaTang(robot, args.radioD, args.radioAlfa, args.R, 0.4, 0.2)   
+        else:       
+            # print("pruebaBaldosasOdometria(robot, 0.2, 4)")
+            pruebaBaldosasOdometria(robot, 0.2, 4)
 
         robot.lock_odometry.acquire()
         print("Odom values at main at the END: %.2f, %.2f, %.2f " % (robot.x.value, robot.y.value, robot.th.value))
@@ -273,11 +270,13 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--radioD", help="Radio para el 8 (m)",
                         type=float, default=0.4)
     parser.add_argument("-a", "--radioAlfa", help="Radio para alfa de la trayectoria 2 (m)",
-                        type=float, default=0.2)
+                        type=float, default=0.4)
     parser.add_argument("-R", "--R", help="Longitud de la recta de la trayectoria 2 (m)",
-                        type=float, default=0.6)
+                        type=float, default=0.8)
     parser.add_argument("-l", "--log", help="Log file",
-                        type=str, default="test-tang.log") 
+                        type=str, default=None) 
+    parser.add_argument("-t", "--testcase", help="Testcase",
+                        type=int, default=2)
     # TODO: velocidad base /angular??
     args = parser.parse_args()
 
