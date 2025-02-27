@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
 
+# SCRIPT PARA CALIBRAR LOS VALORES DE COLOR Y TAMAÑO DE LOS BLOBS
+
+
 # Standard imports
 import cv2
 import numpy as np;
 
 # Read image
-img_BGR = cv2.imread("red_blue.jpg")
+img_BGR = cv2.imread("red_blue.jpg") # TODO: CAMBIAR A HSV
 #img_BGR = cv2.imread("many.jpg")
 
 # Setup default values for SimpleBlobDetector parameters.
