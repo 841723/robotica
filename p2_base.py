@@ -179,35 +179,35 @@ def trayectoriaTang(robot, radioD, radioAlfa, R, w_base, v_base):
     robot.setSpeed(0, 0)
 
     # 3. Línea recta longitud R
+    print("3. Línea recta longitud R")
     x, y, th = robot.readOdometry()
     x_obj = x + R * math.cos(th)
     y_obj = y + R * math.sin(th)
     robot.setSpeed(v_base, 0)
     robot.waitPosition(x_obj, y_obj)
-    print("3. Línea recta longitud R")
     robot.setSpeed(0, 0)
 
     # 4. Semicírculo radio d (derecha)
+    print("4. Semicírculo radio d (derecha)")
     v_d = w_base * radioD
     robot.setSpeed(v_d, -w_base)
     robot.waitAngle(-np.pi/2)
     robot.waitAngle(-np.pi/2-angulo_tangencia)
-    print("4. Semicírculo radio d (derecha)")
     robot.setSpeed(0, 0)
 
     # 5. Línea recta longitud R
+    print("5. Línea recta longitud R")
     x, y, th = robot.readOdometry()
     robot.setSpeed(v_base, 0)
     x_obj = x + R * math.cos(th)
     y_obj = y + R * math.sin(th)
     robot.waitPosition(x_obj, y_obj)
-    print("5. Línea recta longitud R")
     robot.setSpeed(0, 0)
 
     # 6. Cuarto de círculo radio radioAlfa (derecha)
+    print("6. Cuarto de círculo radio radioAlfa (derecha)")
     robot.setSpeed(v_alfa, -w_base)
     robot.waitAngle(np.pi/2)
-    print("6. Cuarto de círculo radio radioAlfa (derecha)")
 
     robot.setSpeed(0, 0)
 

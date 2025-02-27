@@ -200,7 +200,7 @@ class Robot:
             t_siguiente += self.P
             t_actual = time.time()
             if t_siguiente > t_actual:
-                time.sleep(t_siguiente - time.time()) # sleep for a period
+                time.sleep(t_siguiente - time.time())
                 
             [_, _, ang_actual] = self.readOdometry()
             distancia_a_final = self.angleDistance(ang_final, ang_actual)
@@ -213,8 +213,7 @@ class Robot:
                 error_count += 1
                 if error_count > 3:
                     # si nos alejamos del ángulo deseado, paramos
-                    print("Error increasing", distancia_a_final, "is greater than", ultima_distancia)
-                    
+                    print("Error aumentando", distancia_a_final, "; es mayor que", ultima_distancia)
                     break
             else:
                 error_count = 0
@@ -246,7 +245,7 @@ class Robot:
             t_siguiente += self.P
             t_actual = time.time()
             if t_siguiente > t_actual:
-                time.sleep(t_siguiente - t_actual)
+                time.sleep(t_siguiente - time.time())
             
             [x_actual, y_actual, _] = self.readOdometry()
             diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
@@ -263,9 +262,7 @@ class Robot:
         
         print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
         print("Error:", diferencia_posicion)
-    
-        
-        
+
     def __del__(self):
         self.finished.value = True
         self.setSpeed(0,0)
