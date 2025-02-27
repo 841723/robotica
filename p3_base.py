@@ -7,13 +7,17 @@ import time
 from Robot import Robot
 
 def main(args):
+    redMin = (10, 10, 100)
+    redMax = (50, 50, 255)
+    blueMin=(60, 10, 10)
+    blueMax=(255, 100, 100)
+    target = [0.5,0.5]
+    targetSize = 10
+    catch = True
     try:
-        if args.radioD < 0:
-            print 'd must be a positive value'
-            exit(1)
 
         # Initialize Odometry. Default value will be 0,0,0
-        robot = Robot() 
+        robot = Robot(log_filename=args.log) 
         # 1. launch updateOdometry thread()
         robot.startOdometry()
 
@@ -22,11 +26,22 @@ def main(args):
         # for example the different target properties we want (size, position, color, ..)
         # or a boolean to indicate if we want the robot to catch the object or not
         # At least COLOR, the rest are up to you, but always put a default value.
-    	# res = robot.trackObject(colorRangeMin=[0,0,0], colorRangeMax=[255,255,255], 
-        #                   targetSize=??, target??=??, ...)
+        if args.color == 'r':
+            print("Tracking red ball ...")
+            res = robot.trackObject(
+                targetSize=targetSize, target=target,
+                colorRangeMin=redMin, colorRangeMax=redMax, 
+                catch=catch)
+        else:
+            print("Tracking blue ball ...")
+            res = robot.trackObject(
+                targetSize=targetSize, target=target,
+                colorRangeMin=blueMin, colorRangeMax=blueMax,
+                catch=catch)
+        robot.setSpeed(0, 0)
 
-        # if res:
-        #   robot.catch
+        if res:
+          robot.catch()
 
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
@@ -37,7 +52,10 @@ def main(args):
     except KeyboardInterrupt: 
     # except the program gets interrupted by Ctrl+C on the keyboard.
     # THIS IS IMPORTANT if we want that motors STOP when we Ctrl+C ...
+        print("Keyboard interrupt")
+        robot.setSpeed(0, 0)
         robot.stopOdometry()
+        print("STOPPED BY USER")
 
 if __name__ == "__main__":
 
@@ -45,7 +63,9 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--color", help="color of the ball to track",
-                        type=float, default=40.0)
+                        type=float, default='r')
+    parser.add_argument("-l", "--log", help="Log file",
+                    type=str, default="test-tang.log") 
     args = parser.parse_args()
 
     main(args)
