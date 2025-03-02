@@ -17,27 +17,27 @@ def main(args):
     try:
 
         # Initialize Odometry. Default value will be 0,0,0
-        robot = Robot(log_filename=args.log) 
+        robot = Robot(log_filename=args.log)
+
         # 1. launch updateOdometry thread()
         robot.startOdometry()
 
         # 2. Loop running the tracking until ??, then catch the ball
-        # TO-DO: ADD to the Robot class a method to track an object, given certain parameters
+        # TODO: ADD to the Robot class a method to track an object, given certain parameters
         # for example the different target properties we want (size, position, color, ..)
         # or a boolean to indicate if we want the robot to catch the object or not
         # At least COLOR, the rest are up to you, but always put a default value.
         if args.color == 'r':
             print("Tracking red ball ...")
-            res = robot.trackObject(
-                targetSize=targetSize, target=target,
-                colorRangeMin=redMin, colorRangeMax=redMax, 
-                catch=catch)
+            colorRangeMin = redMin
+            colorRangeMax = redMax
+            
         else:
             print("Tracking blue ball ...")
-            res = robot.trackObject(
-                targetSize=targetSize, target=target,
-                colorRangeMin=blueMin, colorRangeMax=blueMax,
-                catch=catch)
+            colorRangeMin = blueMin
+            colorRangeMax = blueMax
+
+        res = robot.trackObject(colorRangeMin, colorRangeMax, target, targetSize, catch)
         robot.setSpeed(0, 0)
 
         if res:
@@ -46,6 +46,7 @@ def main(args):
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
+        time.sleep(3)
         robot.stopOdometry()
 
 
@@ -56,6 +57,7 @@ def main(args):
         robot.setSpeed(0, 0)
         robot.stopOdometry()
         print("STOPPED BY USER")
+        
 
 if __name__ == "__main__":
 
