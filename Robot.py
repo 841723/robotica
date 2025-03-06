@@ -321,11 +321,11 @@ class Robot:
         return True
 
     def init_camera(self): # TODO: check
-        cam = picamera.PiCamera()
+        self.camera = picamera.PiCamera()
 
-        cam.resolution = (320, 240)
-        #cam.resolution = (640, 480)
-        cam.framerate = 32
+        self.camera.resolution = (320, 240)
+        #self.camera.resolution = (640, 480)
+        self.camera.framerate = 32
 
         # allow the camera to warmup
         time.sleep(0.1)
