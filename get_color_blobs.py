@@ -11,6 +11,7 @@ import numpy as np;
 # Read image
 img_BGR = cv2.imread("red_blue.jpg") # TODO: CAMBIAR A HSV
 #img_BGR = cv2.imread("many.jpg")
+img_HSV = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2HSV)
 
 # Setup default values for SimpleBlobDetector parameters.
 params = cv2.SimpleBlobDetector_Params()
@@ -45,11 +46,11 @@ else :
 	detector = cv2.SimpleBlobDetector_create(params)
 
 # keypoints on original image (will look for blobs in grayscale)
-keypoints = detector.detect(img_BGR)
+keypoints = detector.detect(img_HSV)
 # Draw detected blobs as red circles.
 # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures
 # the size of the circle corresponds to the size of blob
-im_with_keypoints = cv2.drawKeypoints(img_BGR, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+im_with_keypoints = cv2.drawKeypoints(img_HSV, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 # Show blobs
 cv2.imshow("Keypoints on Gray Scale", im_with_keypoints)
@@ -67,16 +68,16 @@ redMax = (50, 50, 255)
 blueMin=(60, 10, 10)
 blueMax=(255, 100, 100)
 
-mask_red=cv2.inRange(img_BGR, redMin, redMax)
-mask_blue=cv2.inRange(img_BGR, blueMin, blueMax)
+mask_red=cv2.inRange(img_HSV, redMin, redMax)
+mask_blue=cv2.inRange(img_HSV, blueMin, blueMax)
 
 
 # apply the mask
-red = cv2.bitwise_and(img_BGR, img_BGR, mask = mask_red)
-blue = cv2.bitwise_and(img_BGR, img_BGR, mask = mask_blue)
+red = cv2.bitwise_and(img_HSV, img_HSV, mask = mask_red)
+blue = cv2.bitwise_and(img_HSV, img_HSV, mask = mask_blue)
 # show resulting filtered image next to the original one
-cv2.imshow("Red regions", np.hstack([img_BGR, red]))
-cv2.imshow("Blue regions", np.hstack([img_BGR, blue]))
+cv2.imshow("Red regions", np.hstack([img_HSV, red]))
+cv2.imshow("Blue regions", np.hstack([img_HSV, blue]))
 
 
 # detector finds "dark" blobs by default, so invert image for results with same detector
@@ -90,9 +91,9 @@ for kp in keypoints_red:
 # Draw detected blobs as red circles.
 # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures
 # the size of the circle corresponds to the size of blob
-im_with_keypoints = cv2.drawKeypoints(img_BGR, keypoints_red, np.array([]),
+im_with_keypoints = cv2.drawKeypoints(img_HSV, keypoints_red, np.array([]),
 	(255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-im_with_keypoints2 = cv2.drawKeypoints(img_BGR, keypoints_blue, np.array([]),
+im_with_keypoints2 = cv2.drawKeypoints(img_HSV, keypoints_blue, np.array([]),
 	(255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 # Show mask and blobs found

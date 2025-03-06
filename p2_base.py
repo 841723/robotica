@@ -262,9 +262,9 @@ def main(args):
         # testcase = 1 # 2 esferas
         # testcase = 2 # otro
         testcase = args.testcase
+        testcase = 0
         # 1. launch updateOdometry Process()
         robot.startOdometry()
-
         if testcase == 0:
             # print(f"trayectoriaOcho(robot, {args.radioD}, 0.4)")
             # trayectoriaOcho(robot, args.radioD, 0.4)
@@ -273,6 +273,7 @@ def main(args):
             # print(f"trayectoriaTang(robot, {args.radioD}, {args.radioAlfa}, 0.6, 0.1, 0.1)")
             trayectoriaTang(robot, args.radioAlfa, args.radioD, args.R, 0.4, 0.2)   
         else:
+            print("Prueba Baldosas")
             # print("pruebaBaldosasOdometria(robot, 0.2, 4)")
             pruebaBaldosasOdometria(robot, 0.2, 4)
 

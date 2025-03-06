@@ -7,6 +7,9 @@ import brickpi3 # import the BrickPi3 drivers
 import time     # import the time library for the sleep function
 import sys
 
+import picamera
+from picamera.array import PiRGBArray
+
 import cv2
 
 from lib.utils import rad_to_deg, deg_to_rad, norm_pi
@@ -52,6 +55,8 @@ class Robot:
         self.BP.offset_motor_encoder(self.PORT_MOTOR_IZQUIERDA,
            self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA))
 
+        # configure camera
+        self.camera = None
 
         ##################################################
         # odometry shared memory values
@@ -69,6 +74,9 @@ class Robot:
         
         # odometry update period
         self.P = 0.05
+        
+        # Tracking update period
+        self.tracking_period = 0.1
 
         # save into log file
         self.log_filename = None
@@ -280,7 +288,7 @@ class Robot:
         return True
     
     # Va hacia atrás y comprueba si hay algo del color de la bola en el rango
-    # PROBLEMA SI CHOCARA HACIA ATRÁS, se puede plantear sensor de distancia hacia atrás
+    # TODO: PROBLEMA SI CHOCARA HACIA ATRÁS, se puede plantear sensor de distancia hacia atrás
     def checkBallCaught(self, colorRangeMin, colorRangeMax):
 
         # en funcion a posicion de camara
@@ -312,6 +320,16 @@ class Robot:
         self.BP.set_motor_position(self.basket_motor_port, 0)
         return True
 
+    def init_camera(self): # TODO: check
+        cam = picamera.PiCamera()
+
+        cam.resolution = (320, 240)
+        #cam.resolution = (640, 480)
+        cam.framerate = 32
+
+        # allow the camera to warmup
+        time.sleep(0.1)
+            
     # Devuelve la imagen capturada por la cámara
     def takePhoto(self):
         # TODO: implement 
