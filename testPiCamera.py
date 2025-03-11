@@ -20,6 +20,12 @@ print("inicializando")
 time.sleep(0.1)
 
 
+# rawCapture.truncate(0)
+# rawCapture.seek(0)
+# # Captura una imagen y la devuelve
+# cam.capture(rawCapture, format="bgr")
+# img = rawCapture.array
+# cv2.imshow('Captura', img)
 for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 
     frame = img.array
@@ -32,5 +38,6 @@ for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True)
         cam.close()
         break
 
+cv2.waitKey(0)
 cv2.destroyAllWindows()
 

@@ -44,7 +44,7 @@ def calcTrackSpeed(x, area, targetX, objectiveTargetSize, v, w):
     error_size = np.sqrt(objectiveTargetSize) - np.sqrt(area)
     
     # Constantes para ajustar sensibilidad (cómo de lineal es la sigmoidal)
-    kp_position = 1  # Factor proporcional para posición
+    kp_position = 1   # Factor proporcional para posición
     kp_size = 1      # Factor proporcional para tamaño
     
     # Función sigmoid para suavizar la respuesta 
@@ -55,13 +55,16 @@ def calcTrackSpeed(x, area, targetX, objectiveTargetSize, v, w):
     # Ajuste de velocidad lineal (v) basado en error de tamaño
     # Si la bola es más pequeña que el objetivo -> avanzar
     # Si la bola es más grande que el objetivo -> retroceder
-    v_adjusted = kp_size * (v * sigmoid(error_size) - (v/2))
+
+    v_adjusted = kp_size * (v * sigmoid(error_size, 0.5) - (v/2))
     
     # Ajuste de velocidad angular (w) basado en error de posición
     # Si la bola está a la derecha del objetivo -> girar izquierda
     # Si la bola está a la izquierda del objetivo -> girar derecha
-    w_adjusted = kp_position * (w * sigmoid(error_x) - (w/2))
+    w_adjusted = - kp_position * (w * sigmoid(error_x, 0.20) - (w/2))
     
+    print("sigmoid", sigmoid(error_size, 0.1))
+    print("error_x: ", error_x)
     print("v_adjusted: ", v_adjusted)
     print("w_adjusted: ", w_adjusted)
     
@@ -72,5 +75,5 @@ def calcTrackSpeed(x, area, targetX, objectiveTargetSize, v, w):
 # hasta que encuentra una bola 
 def calcSearchSpeed(w):
     # hace elipses por si la bola está lejos
-    v = 0.2
+    v = 0
     return v, w

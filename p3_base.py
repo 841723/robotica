@@ -7,12 +7,6 @@ import time
 from Robot import Robot
 
 def main(args):
-    redMin = (10, 10, 100)
-    redMax = (50, 50, 255)
-    blueMin=(60, 10, 10)
-    blueMax=(255, 100, 100)
-    target = [0.5,0.5]
-    targetSize = 10
     catch = True
     try:
 
@@ -27,21 +21,26 @@ def main(args):
         # for example the different target properties we want (size, position, color, ..)
         # or a boolean to indicate if we want the robot to catch the object or not
         # At least COLOR, the rest are up to you, but always put a default value.
-        if args.color == 'r':
-            print("Tracking red ball ...")
-            colorRangeMin = redMin
-            colorRangeMax = redMax
-            
-        else:
-            print("Tracking blue ball ...")
-            colorRangeMin = blueMin
-            colorRangeMax = blueMax
-
-        res = robot.trackObject(colorRangeMin, colorRangeMax, target, targetSize, catch)
+        
+        res = robot.trackObject(catch=catch)
         robot.setSpeed(0, 0)
 
-        if res:
-          robot.catch()
+        # if args.color == 'r':
+        #     print("Tracking red ball ...")
+        #     colorRangeMin = redMin
+        #     colorRangeMax = redMax
+            
+        # else:
+        #     print("Tracking blue ball ...")
+        #     colorRangeMin = blueMin
+        #     colorRangeMax = blueMax
+
+        # res = robot.trackObject(colorRangeMin, colorRangeMax, target, targetSize, catch)
+        # robot.setSpeed(0, 0)
+
+        # if res:
+        #   robot.catch()
+
 
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
@@ -64,10 +63,10 @@ if __name__ == "__main__":
     # get and parse arguments passed to main
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--color", help="color of the ball to track",
-                        type=float, default='r')
+    # parser.add_argument("-c", "--color", help="color of the ball to track",
+    #                     type=float, default='r')
     parser.add_argument("-l", "--log", help="Log file",
-                    type=str, default="test-tang.log") 
+                    type=str, default="default.log") 
     args = parser.parse_args()
 
     main(args)

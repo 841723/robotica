@@ -3,9 +3,11 @@ import numpy as np
 import os
 
 
-def detect_ball(img:str):
-    # Leer la imagen
-    img_BGR = cv2.imread(img)
+def detect_ball(img_BGR, show:bool=False):
+    # # Leer la imagen
+    # img_BGR = cv2.imread(img)
+
+    # print("Procesando imagen:" + img_BGR.apply(str))
 
     # Convertir a HSV
     img_HSV = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2HSV)
@@ -23,7 +25,9 @@ def detect_ball(img:str):
     mask_red = cv2.bitwise_or(mask1, mask2)
 
     # Encontrar contornos en la máscara
-    contours, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    cx, cy, area = 0, 0, 0 
 
     # Si se detectan contornos
     if contours:
@@ -39,16 +43,21 @@ def detect_ball(img:str):
         else:
             cx, cy = 0, 0  # Evitar división por cero
 
-        print(f"Pelota detectada en posición: ({cx}, {cy}) con área: {area}")
+        # print(f"Pelota detectada en posición: ({cx}, {cy}) con área: {area}")
 
-        # Dibujar solo el punto en el centro
-        cv2.circle(img_BGR, (cx, cy), 3, (0, 255, 0), -1)  # Verde, relleno
+        if show:
+            # Dibujar solo el punto en el centro
+            cv2.circle(img_BGR, (cx, cy), 3, (0, 255, 0), -1)  # Verde, relleno
 
-    # Mostrar la imagen con el punto central marcado
-    cv2.imshow("Pelota Detectada", img_BGR)
+    if show:
+        # Mostrar la imagen con el punto central marcado
+        cv2.imshow("Pelota Detectada", np.stack([mask_red]*3, axis=-1)) 
+        cv2.imshow("Pelota Detectada con Centroide", img_BGR)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    return cx, cy, area
 
 
 
@@ -56,9 +65,8 @@ def detect_ball_all_files(path:str):
     # Loop over the files in the directory
     for filename in os.listdir(path):
         if filename.endswith(".jpg"):
-            
             # Detect the ball in the image
-            detect_ball(f"{path}/{filename}")
+            detect_ball(path+"/"+filename, show=True)
 
 
 if __name__ == "__main__":

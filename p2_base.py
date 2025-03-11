@@ -311,7 +311,6 @@ if __name__ == "__main__":
                         type=str, default=None) 
     parser.add_argument("-t", "--testcase", help="Testcase",
                         type=int, default=2)
-    # TODO: velocidad base /angular??
     args = parser.parse_args()
 
     main(args)

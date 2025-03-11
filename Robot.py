@@ -1,19 +1,21 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 from __future__ import print_function # use python 3 syntax but make it compatible with python 2
-from __future__ import division       #                           ''
+from __future__ import division
+import io       #                           ''
 
 import brickpi3 # import the BrickPi3 drivers
 import time     # import the time library for the sleep function
 import sys
 
+from get_color_blobs_diego import detect_ball
 import picamera
 from picamera.array import PiRGBArray
 
 import cv2
 
 from lib.utils import rad_to_deg, deg_to_rad, norm_pi
-from lib.utilsrobot import createDetector
+from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
 
 import numpy as np
 
@@ -35,7 +37,7 @@ class Robot:
 
         # Robot Basket Positions (in degrees)
         self.PINZA_ARRIBA = 0
-        self.PINZA_ABAJO = -90
+        self.PINZA_ABAJO = -96
 
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
@@ -48,6 +50,7 @@ class Robot:
 
         # move motor A to the starting position
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
+        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=70)
 
         # reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_MOTOR_DERECHA,
@@ -68,6 +71,7 @@ class Robot:
         self.anguloDerecha = Value('d',0.0)
         self.anguloIzquierda = Value('d',0.0)
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
+        self.rawCapture = None
 
         # if we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
@@ -76,7 +80,16 @@ class Robot:
         self.P = 0.05
         
         # Tracking update period
-        self.tracking_period = 0.1
+        self.tracking_period = 0.01
+        
+        self.stream = None
+        
+        ##################################################
+        #### VARIABLES PARA EL SEGUIMIENTO DE OBJETOS ####
+        ##################################################
+        
+        self.minTargetSize = 35
+        # self
 
         # save into log file
         self.log_filename = None
@@ -283,7 +296,7 @@ class Robot:
         print("Error:", diferencia_posicion)
 
     # Baja la cesta
-    def catchBall(self):
+    def catch(self):
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ABAJO)
         return True
     
@@ -317,7 +330,7 @@ class Robot:
     
     # Sube la cesta
     def release(self):
-        self.BP.set_motor_position(self.basket_motor_port, 0)
+        self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
         return True
 
     def init_camera(self): # TODO: check
@@ -326,52 +339,106 @@ class Robot:
         self.camera.resolution = (320, 240)
         #self.camera.resolution = (640, 480)
         self.camera.framerate = 32
+        self.rawCapture = PiRGBArray(self.camera, size=(320, 240))
+        
+        self.camera.exposure_mode = 'sports'
+        self.camera.awb_mode = 'auto'  
 
+        # self.stream = io.BytesIO()
         # allow the camera to warmup
         time.sleep(0.1)
             
     # Devuelve la imagen capturada por la cámara
     def takePhoto(self):
-        # TODO: implement 
-        # Captura una imagen y la devuelve
-        img = self.camera.read()
+        # inicio = time.time()
+        self.rawCapture.truncate(0)
+        # fin = time.time()
+        # print("self.rawCapture.truncate(0): ", fin - inicio)
+
+        # inicio = time.time()
+        self.rawCapture.seek(0)
+        # fin = time.time()
+        # print("self.rawCapture.seek(0): ", fin - inicio)
+        
+        # inicio = time.time()
+        self.camera.capture(self.rawCapture, format="bgr", use_video_port=True)
+        # self.camera.capture_continuous(self.stream, format='bgr', video_port=True)
+        # fin = time.time()
+        # print("self.camera.capture(self.rawCapture, format=\"bgr\", use_video_port=True): ", fin - inicio)
+        
+        # inicio = time.time()
+        img = self.rawCapture.array
+        # fin = time.time()
+        # print("img = self.rawCapture.array: ", fin - inicio)
+
+        cv2.imshow("Image", img)
+
+
+        # self.rawCapture.truncate(0)
+        # self.rawCapture.seek(0)
+        # # Captura una imagen y la devuelve
+        # self.camera.capture(self.rawCapture, format="bgr")
+        # img = self.rawCapture.array
         return img
     
+        # with picamera.PiCamera() as camera:
+        # stream = io.BytesIO()
+        # for foo in camera.capture_continuous(stream, format='jpeg'):
+        #     # Truncate the stream to the current position (in case
+        #     # prior iterations output a longer image)
+        #     stream.truncate()
+        #     stream.seek(0)
+        
+        
+        # stream = io.BytesIO()
+        # self.camera.capture(stream, format='jpeg')
+        # self.camera.stop_preview()
+        # self.camera.close()
+        # stream.seek(0)
+        # image = np.frombuffer(stream.getvalue(), dtype=np.uint8)
+        # img_BGR = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        # return img_BGR
+    
     # Busca la bola en la imagen y devuelve su posición y área
-    def detectBall(self, detector, colorRangeMin=100, colorRangeMax=255):
-        # TODO: esto está bien para hsv?
+    def detectBall(self):
         
-        img = self.takePhoto()
+        # mask=cv2.inRange(img, colorRangeMin, colorRangeMax)
+        # # apply the mask
+        # img = cv2.bitwise_and(img, img, mask = mask) # TODO: añadir erosión o difuminado? 
+        # keypoints = detector.detect(255-mask)
         
-        mask=cv2.inRange(img, colorRangeMin, colorRangeMax)
-        # apply the mask
-        img = cv2.bitwise_and(img, img, mask = mask) # TODO: añadir erosión o difuminado? 
-        keypoints = detector.detect(255-mask)
-        
-        # Take biggest blob
-        x, y, area = 0, 0, 0
-        for kp in keypoints:
-            if kp.size > area:
-                x = kp.x
-                y = kp.y
-                area = kp.size
+        # # Take biggest blob
+        # x, y, area = 0, 0, 0
+        # for kp in keypoints:
+        #     if kp.size > area:
+        #         x = kp.x
+        #         y = kp.y
+        #         area = kp.size
 
-        # posicion a la esquina superior izquierda
+        # # posicion a la esquina superior izquierda
+
+        # detection_tolerance = 0.1
+        # targetX = 0.5
+        # objectiveTargetSize = 0.1
+
+        img = self.takePhoto()
+        x, y, area = detect_ball(img)
+        print(x, y, area)
         return x, y, area 
 
 
-    def trackObject(self, minTargetSize, targetX, objectiveTargetSize,
-                        colorRangeMin, colorRangeMax, v_base, w_base,
-                        catch=True):
+    def trackObject(self, v_base=0.5, w_base=np.pi/3, catch=True):
+        self.init_camera()
+
         finished = False
         ball_caught = False
-        area = 0
-        detection_tolerance = 0.1
+        targetX = 320/2
+        # targetY = 240/4
+        objectiveTargetSize = 6500
+        detection_tolerance = 15   
 
         self.release() # Comprobamos que la cesta está arriba
 
-        detector = createDetector()
-        
         # clear log file
         self.log_file = open(self.log_filename, "w")
         self.log_file.close() 
@@ -380,35 +447,42 @@ class Robot:
             
             targetPositionReached = False
             # 1. search the most promising blob
-            x, y, area = self.detectBall(detector, colorRangeMin, colorRangeMax)         
+            x, y, area = self.detectBall()         
+            print(x, y, area)
+            
+            # TODO: detectar qué lado es el último por el que ha salido 
             
             # Dar vueltas hasta encontrar un objeto
-            while area < minTargetSize:
-                search_v, search_w = self.calcSearchSpeed(w_base)             
+            while area < self.minTargetSize:
+                print("Objeto no encontrado")
+                search_v, search_w = calcSearchSpeed(w_base)             
                 self.setSpeed(search_v, search_w)
                 time.sleep(self.tracking_period)
-                x, y, area = self.detectBall(detector, colorRangeMin, colorRangeMax)
+                x, y, area = self.detectBall()
 
 
             # Objeto encontrado, paramos y buscamos
             print("Objeto encontrado")
             self.setSpeed(0, 0)
-            time.sleep(0.1)
             
             while not targetPositionReached or not ball_caught: 
                 # 2. v y w para acercarse a la bola
-                x, y, area = self.detectBall(detector, colorRangeMin, colorRangeMax)  
-                if area < minTargetSize:
+                x, y, area = self.detectBall()  
+                if area < self.minTargetSize:
                     print("Objeto perdido")
                     break
                 
-                v, w = self.calcTrackSpeed(x, y, area, targetX, objectiveTargetSize, v_base, w_base)
+                print(v_base, "v_base")
+                print(w_base, "w_base")
+                v, w = calcTrackSpeed(x,area, targetX, objectiveTargetSize, v=v_base, w=w_base)
                 self.setSpeed(v, w)
                 
                 # 3. check la posición válida para coger la bola
-                if (abs(x - targetX) <  detection_tolerance):
+                if (abs(x - targetX) <  detection_tolerance and area > objectiveTargetSize):
+                    # and abs(y - targetY) < detection_tolerance
                     
                     print("Posición válida para coger la bola")
+                    self.setSpeed(0, 0)
                     
                     if catch:     
                         self.catch()
@@ -424,7 +498,7 @@ class Robot:
                         targetPositionReached = True
                         
                 # Si no estamos en el target o se ha escapado la bola continuamos           
-                time.sleep(self.tracking_period)
+                # time.sleep(self.tracking_period)
 
             if targetPositionReached:
                 finished = True
@@ -434,7 +508,7 @@ class Robot:
     
 
     def __del__(self):
-        self.finished.value = True
+        # self.finished.value = True
         self.setSpeed(0,0)
         self.BP.reset_all()
 
