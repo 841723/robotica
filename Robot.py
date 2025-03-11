@@ -422,7 +422,7 @@ class Robot:
         # objectiveTargetSize = 0.1
 
         img = self.takePhoto()
-        x, y, area = detect_ball(img)
+        x, y, area = detect_ball(img) # TODO: poner en la misma función
         print(x, y, area)
         return x, y, area 
 
@@ -435,7 +435,8 @@ class Robot:
         targetX = 320/2
         # targetY = 240/4
         objectiveTargetSize = 6500
-        detection_tolerance = 15   
+        detection_tolerance = 15  
+        last_error = 0 # positivo o negativo para determinar la dirección de giro
 
         self.release() # Comprobamos que la cesta está arriba
 
@@ -450,12 +451,11 @@ class Robot:
             x, y, area = self.detectBall()         
             print(x, y, area)
             
-            # TODO: detectar qué lado es el último por el que ha salido 
             
             # Dar vueltas hasta encontrar un objeto
             while area < self.minTargetSize:
                 print("Objeto no encontrado")
-                search_v, search_w = calcSearchSpeed(w_base)             
+                search_v, search_w = calcSearchSpeed(np.sign(last_error) * w_base)             
                 self.setSpeed(search_v, search_w)
                 time.sleep(self.tracking_period)
                 x, y, area = self.detectBall()
@@ -468,9 +468,12 @@ class Robot:
             while not targetPositionReached or not ball_caught: 
                 # 2. v y w para acercarse a la bola
                 x, y, area = self.detectBall()  
+            
                 if area < self.minTargetSize:
                     print("Objeto perdido")
                     break
+                else:
+                    last_error = targetX-x
                 
                 print(v_base, "v_base")
                 print(w_base, "w_base")
