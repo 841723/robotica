@@ -1,25 +1,23 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-from __future__ import print_function # use python 3 syntax but make it compatible with python 2
+from __future__ import \
+    print_function  # use python 3 syntax but make it compatible with python 2
 from __future__ import division
-import io       #                           ''
 
-import brickpi3 # import the BrickPi3 drivers
-import time     # import the time library for the sleep function
+import io  # ''
 import sys
+import time  # import the time library for the sleep function
+from multiprocessing import Lock, Process, Value
 
-from get_color_blobs_diego import detect_ball
+import brickpi3  # import the BrickPi3 drivers
+import cv2
+import numpy as np
 import picamera
+from get_color_blobs_diego import detect_ball
+from lib.utils import deg_to_rad, norm_pi, rad_to_deg
+from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
 from picamera.array import PiRGBArray
 
-import cv2
-
-from lib.utils import rad_to_deg, deg_to_rad, norm_pi
-from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
-
-import numpy as np
-
-from multiprocessing import Process, Value, Lock
 
 class Robot:
     def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None):
@@ -37,7 +35,7 @@ class Robot:
 
         # Robot Basket Positions (in degrees)
         self.PINZA_ARRIBA = 0
-        self.PINZA_ABAJO = -96
+        self.PINZA_ABAJO = -98
 
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
@@ -45,18 +43,22 @@ class Robot:
         self.PORT_MOTOR_DERECHA = self.BP.PORT_B
         self.PORT_MOTOR_IZQUIERDA = self.BP.PORT_C
 
-
         # Configure sensors
 
         # move motor A to the starting position
+        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=100)
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
-        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=70)
+        self.motor_wait_time = 2 
+
 
         # reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_MOTOR_DERECHA,
            self.BP.get_motor_encoder(self.PORT_MOTOR_DERECHA))
         self.BP.offset_motor_encoder(self.PORT_MOTOR_IZQUIERDA,
            self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA))
+        # self.BP.offset_motor_encoder(self.PORT_MOTOR_PINZA,
+        #       self.BP.get_motor_encoder(self.PORT_MOTOR_PINZA))
+        
 
         # configure camera
         self.camera = None
@@ -88,7 +90,9 @@ class Robot:
         #### VARIABLES PARA EL SEGUIMIENTO DE OBJETOS ####
         ##################################################
         
-        self.minTargetSize = 35
+        self.minTargetSize = 30
+        self.width = 320
+        self.height = 240
         # self
 
         # save into log file
@@ -267,7 +271,6 @@ class Robot:
         [x_actual, y_actual, _] = self.readOdometry()
         
         diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
-        primer_paso = True
 
         print("Posición inicial:", x_actual, y_actual)
         print("Esperando hasta alcanzar:", x_deseado, y_deseado)
@@ -298,48 +301,41 @@ class Robot:
     # Baja la cesta
     def catch(self):
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ABAJO)
+        time.sleep(self.motor_wait_time)
         return True
     
     # Va hacia atrás y comprueba si hay algo del color de la bola en el rango
     # TODO: PROBLEMA SI CHOCARA HACIA ATRÁS, se puede plantear sensor de distancia hacia atrás
-    def checkBallCaught(self, colorRangeMin, colorRangeMax):
-
-        # en funcion a posicion de camara
-        self.setSpeed(-0.15, 0)
-        time.sleep(0.5)
+    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize):        # en funcion a posicion de camara
+        # TODO: comprobar que no hay nada detras
+        self.setSpeed(-0.1, 0)
+        bola_cogida = False
+        timeout = time.time() + 4
+        while time.time() < timeout:
+            _, y, area = self.detectBall()
+            if minObjectiveSize < area < maxObjectiveSize and y <= self.height/4:
+                bola_cogida = True
+                print("Bola cogida correctamente")
+                break
+        
         self.setSpeed(0, 0)
 
-        x, y, area = self.detectBall(self.detector, colorRangeMin, colorRangeMax)
-
-        # if there is no ball, is not in the basket
-        if area <= 0:
-            return False
-        
-        # if the ball is higher than 20% of screen, is not in the basket
-        if y > 0.2:
-            return False
-        
-        # if the ball is not in the 'middle' of the screen, is not in the basket
-        # suponiendo que la camara enfoca partes fuera de la cesta
-        if x < 0.2 or x > 0.8:
-            return False
-        
-        # if not, the ball is in the basket
-        return True 
+        return bola_cogida
 
     
     # Sube la cesta
     def release(self):
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
+        time.sleep(self.motor_wait_time)
         return True
 
     def init_camera(self): # TODO: check
         self.camera = picamera.PiCamera()
 
-        self.camera.resolution = (320, 240)
+        self.camera.resolution = (self.width, self.height)
         #self.camera.resolution = (640, 480)
         self.camera.framerate = 32
-        self.rawCapture = PiRGBArray(self.camera, size=(320, 240))
+        self.rawCapture = PiRGBArray(self.camera, size=(self.width, self.height))
         
         self.camera.exposure_mode = 'sports'
         self.camera.awb_mode = 'auto'  
@@ -350,35 +346,10 @@ class Robot:
             
     # Devuelve la imagen capturada por la cámara
     def takePhoto(self):
-        # inicio = time.time()
         self.rawCapture.truncate(0)
-        # fin = time.time()
-        # print("self.rawCapture.truncate(0): ", fin - inicio)
-
-        # inicio = time.time()
-        self.rawCapture.seek(0)
-        # fin = time.time()
-        # print("self.rawCapture.seek(0): ", fin - inicio)
-        
-        # inicio = time.time()
+        self.rawCapture.seek(0)        
         self.camera.capture(self.rawCapture, format="bgr", use_video_port=True)
-        # self.camera.capture_continuous(self.stream, format='bgr', video_port=True)
-        # fin = time.time()
-        # print("self.camera.capture(self.rawCapture, format=\"bgr\", use_video_port=True): ", fin - inicio)
-        
-        # inicio = time.time()
         img = self.rawCapture.array
-        # fin = time.time()
-        # print("img = self.rawCapture.array: ", fin - inicio)
-
-        cv2.imshow("Image", img)
-
-
-        # self.rawCapture.truncate(0)
-        # self.rawCapture.seek(0)
-        # # Captura una imagen y la devuelve
-        # self.camera.capture(self.rawCapture, format="bgr")
-        # img = self.rawCapture.array
         return img
     
         # with picamera.PiCamera() as camera:
@@ -427,16 +398,17 @@ class Robot:
         return x, y, area 
 
 
-    def trackObject(self, v_base=0.5, w_base=np.pi/3, catch=True):
+    def trackObject(self, v_base=0.2, w_base=np.pi/3, catch=True):
         self.init_camera()
 
         finished = False
         ball_caught = False
-        targetX = 320/2
+        targetX = self.width/2-40
         # targetY = 240/4
-        objectiveTargetSize = 6500
-        detection_tolerance = 15  
-        last_error = 0 # positivo o negativo para determinar la dirección de giro
+        minObjectiveTargetSize = 6600
+        maxObjectiveTargetSize = 7000
+        detection_tolerance = 7
+        last_error = 1 # positivo o negativo para determinar la dirección de giro
 
         self.release() # Comprobamos que la cesta está arriba
 
@@ -453,8 +425,8 @@ class Robot:
             
             
             # Dar vueltas hasta encontrar un objeto
-            while area < self.minTargetSize:
-                print("Objeto no encontrado")
+            while area < self.minTargetSize and abs(x - targetX) >  detection_tolerance: 
+                # print("Objeto no encontrado")
                 search_v, search_w = calcSearchSpeed(np.sign(last_error) * w_base)             
                 self.setSpeed(search_v, search_w)
                 time.sleep(self.tracking_period)
@@ -465,23 +437,22 @@ class Robot:
             print("Objeto encontrado")
             self.setSpeed(0, 0)
             
-            while not targetPositionReached or not ball_caught: 
+            while not targetPositionReached and not ball_caught: 
                 # 2. v y w para acercarse a la bola
                 x, y, area = self.detectBall()  
+                print("x: ", x, "y: ", y, "area: ", area)
             
-                if area < self.minTargetSize:
+                if area < self.minTargetSize or area > self.maxTargetSize:
                     print("Objeto perdido")
                     break
                 else:
-                    last_error = targetX-x
+                    last_error = x-targetX
                 
-                print(v_base, "v_base")
-                print(w_base, "w_base")
-                v, w = calcTrackSpeed(x,area, targetX, objectiveTargetSize, v=v_base, w=w_base)
+                v, w = calcTrackSpeed(x,area, targetX, minObjectiveTargetSize, maxObjectiveTargetSize, v=v_base, w=w_base)
                 self.setSpeed(v, w)
                 
                 # 3. check la posición válida para coger la bola
-                if (abs(x - targetX) <  detection_tolerance and area > objectiveTargetSize):
+                if (abs(x - targetX) <  detection_tolerance and (minObjectiveTargetSize < area < maxObjectiveTargetSize) and y <= self.height/3):
                     # and abs(y - targetY) < detection_tolerance
                     
                     print("Posición válida para coger la bola")
@@ -490,12 +461,12 @@ class Robot:
                     if catch:     
                         self.catch()
                         
-                        if not self.checkBallCaught():
+                        if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize):
                             print("Fallo al coger la bola")
                             self.release()
                         else:
                             print("Bola cogida")
-                            targetPositionReached = True  
+                            ball_caught = True
                             
                     else: # Si no hace falta coger la bola
                         targetPositionReached = True
@@ -503,7 +474,7 @@ class Robot:
                 # Si no estamos en el target o se ha escapado la bola continuamos           
                 # time.sleep(self.tracking_period)
 
-            if targetPositionReached:
+            if targetPositionReached or ball_caught:
                 finished = True
                 self.setSpeed(0, 0)
                     

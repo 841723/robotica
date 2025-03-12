@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def createDetector(minThreshold=10, maxThreshold=200, minArea=200, maxArea=10000, minCircularity=0.1):
     # TODO: CAMBIAR detector con los parámetros conseguidos en get_color_blobs.py
     # Setup default values for SimpleBlobDetector parameters.
@@ -36,16 +37,20 @@ def createDetector(minThreshold=10, maxThreshold=200, minArea=200, maxArea=10000
     return detector
 
 
-def calcTrackSpeed(x, area, targetX, objectiveTargetSize, v, w):
+def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     # Calcular error de posición
     error_x = targetX - x
-    
+    error_size = 0
     # Calcular error de tamaño
-    error_size = np.sqrt(objectiveTargetSize) - np.sqrt(area)
+    if area < minObjectiveSize:
+        error_size = np.sqrt(minObjectiveSize) - np.sqrt(area)
+    elif area > maxObjectiveSize:
+        error_size = np.sqrt(maxObjectiveSize) - np.sqrt(area)
+
     
     # Constantes para ajustar sensibilidad (cómo de lineal es la sigmoidal)
-    kp_position = 1   # Factor proporcional para posición
-    kp_size = 1      # Factor proporcional para tamaño
+    kp_angle = 0.1   # Factor proporcional para posición
+    kp_size = 0.1      # Factor proporcional para tamaño
     
     # Función sigmoid para suavizar la respuesta 
     # k regula cómo de lineal es la sigmoid
@@ -56,17 +61,20 @@ def calcTrackSpeed(x, area, targetX, objectiveTargetSize, v, w):
     # Si la bola es más pequeña que el objetivo -> avanzar
     # Si la bola es más grande que el objetivo -> retroceder
 
-    v_adjusted = kp_size * (v * sigmoid(error_size, 0.5) - (v/2))
+    v_adjusted =  (v * sigmoid(error_size, kp_size))
     
     # Ajuste de velocidad angular (w) basado en error de posición
     # Si la bola está a la derecha del objetivo -> girar izquierda
     # Si la bola está a la izquierda del objetivo -> girar derecha
-    w_adjusted = - kp_position * (w * sigmoid(error_x, 0.20) - (w/2))
+    w_adjusted = - (w * sigmoid(error_x, kp_angle) - (w/2))
     
-    print("sigmoid", sigmoid(error_size, 0.1))
-    print("error_x: ", error_x)
-    print("v_adjusted: ", v_adjusted)
-    print("w_adjusted: ", w_adjusted)
+    if (abs(w_adjusted) < 0.2):
+        w_adjusted = 0
+    
+    # print("sigmoid", sigmoid(error_size, kp_size))
+    # print("error_x: ", error_x)
+    # print("v_adjusted: ", v_adjusted)
+    # print("w_adjusted: ", w_adjusted)
     
     return v_adjusted, w_adjusted
 

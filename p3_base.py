@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import argparse
+import time
+
 import cv2
 import numpy as np
-import time
 from Robot import Robot
+
 
 def main(args):
     catch = True
@@ -23,7 +25,10 @@ def main(args):
         # At least COLOR, the rest are up to you, but always put a default value.
         
         res = robot.trackObject(catch=catch)
+        # robot.catch()
+        # robot.release()
         robot.setSpeed(0, 0)
+        robot.setSpeed(0, np.pi)
 
         # if args.color == 'r':
         #     print("Tracking red ball ...")
@@ -45,7 +50,7 @@ def main(args):
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
-        time.sleep(3)
+        time.sleep(10)
         robot.stopOdometry()
 
 
