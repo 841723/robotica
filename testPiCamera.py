@@ -30,13 +30,16 @@ for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True)
 
     frame = img.array
     cv2.imshow('Captura', frame)
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # clear the stream in preparation for the next frame
     rawCapture.truncate(0)
     k = cv2.waitKey(1) & 0xff
     if k == ESC:
         cam.close()
         break
+    if k == ord('s'):
+        cv2.imwrite("media/fotos/captura_" + str(time.time()) + ".jpg", frame)
+        print("Captura guardada")
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()

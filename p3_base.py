@@ -28,7 +28,28 @@ def main(args):
         # robot.catch()
         # robot.release()
         robot.setSpeed(0, 0)
-        robot.setSpeed(0, np.pi)
+        robot.setSpeed(0, np.pi/2)
+
+        # robot.init_camera()
+        # time.sleep(2)
+
+        # for img in robot.camera.capture_continuous(robot.rawCapture, format="bgr", use_video_port=True):
+
+        #     frame = img.array
+        #     cv2.imshow('Captura', frame)
+        #     # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #     # clear the stream in preparation for the next frame
+        #     robot.rawCapture.truncate(0)
+        #     k = cv2.waitKey(1) & 0xff
+        #     if k == 27:
+        #         robot.camera.close()
+        #         break
+        #     if k == ord('s'):
+        #         cv2.imwrite("media/local/captura_" + str(time.time()) + ".jpg", frame)
+        #         print("Captura guardada")
+
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
         # if args.color == 'r':
         #     print("Tracking red ball ...")
