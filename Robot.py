@@ -448,6 +448,12 @@ class Robot:
         :param v_base: base linear speed
         :param w_base: base angular speed
         :param catch: boolean to indicate if the robot should catch the ball
+        :param targetX: x position of the target
+        :param minObjectiveTargetSize: minimum area of the ball to consider it as the target
+        :param maxObjectiveTargetSize: maximum area of the ball to consider it as the target
+        :param detection_tolerance: tolerance in the x position of the ball
+        :param maxYValue: maximum y position of the ball
+        :param colorMasks: list of color masks to detect the ball
         """
         self.init_camera()
         finished = False
