@@ -1,43 +1,17 @@
 import cv2
 import numpy as np
 
-
-def createDetector(minThreshold=10, maxThreshold=200, minArea=200, maxArea=10000, minCircularity=0.1):
-    # TODO: CAMBIAR detector con los parámetros conseguidos en get_color_blobs.py
-    # Setup default values for SimpleBlobDetector parameters.
-    params = cv2.SimpleBlobDetector_Params()
-
-    # These are just examples, tune your own if needed
-    # Change thresholds
-    params.minThreshold = minThreshold
-    params.maxThreshold = maxThreshold
-
-    # Filter by Area
-    params.filterByArea = True
-    params.minArea = minArea
-    params.maxArea = maxArea
-
-    # Filter by Circularity
-    params.filterByCircularity = True
-    params.minCircularity = minCircularity
-
-    # Filter by Color
-    params.filterByColor = False
-    # not directly color, but intensity on the channel input
-    #params.blobColor = 0
-    params.filterByConvexity = False
-    params.filterByInertia = False
-    
-    # Create a detector with the parameters
-    ver = (cv2.__version__).split('.')
-    if int(ver[0]) < 3 :
-        detector = cv2.SimpleBlobDetector(params)
-    else:
-        detector = cv2.SimpleBlobDetector_create(params)
-    return detector
-
-
 def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
+    """ Speed calculation for tracking a target.
+    :param x: x coordinate of the target
+    :param area: area of the target
+    :param targetX: x coordinate of the target
+    :param minObjectiveSize: minimum size of the target
+    :param maxObjectiveSize: maximum size of the target
+    :param v: linear speed
+    :param w: angular speed
+    :return: linear and angular speed
+    """
     # Calcular error de posición
     error_x = targetX - x
     error_size = 0
@@ -60,7 +34,6 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     # Ajuste de velocidad lineal (v) basado en error de tamaño
     # Si la bola es más pequeña que el objetivo -> avanzar
     # Si la bola es más grande que el objetivo -> retroceder
-
     v_adjusted =  (v * sigmoid(error_size, kp_size))
     
     # Ajuste de velocidad angular (w) basado en error de posición
@@ -82,6 +55,10 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
 # Devuelve la velocidad (v,w) necesaria para dar vueltas sobre sí mismo 
 # hasta que encuentra una bola 
 def calcSearchSpeed(w):
+    """ Speed calculation for searching a target.
+    :param w: angular speed
+    :return: linear and angular speed
+    """
     # hace elipses por si la bola está lejos
     v = 0
     return v, w
