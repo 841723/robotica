@@ -90,7 +90,7 @@ class Robot:
         #### VARIABLES PARA EL SEGUIMIENTO DE OBJETOS ####
         ##################################################
         
-        self.minTargetSize = 30
+        self.minTargetSize = 5
         self.width = 320
         self.height = 240
         # self
@@ -306,14 +306,14 @@ class Robot:
     
     # Va hacia atrás y comprueba si hay algo del color de la bola en el rango
     # TODO: PROBLEMA SI CHOCARA HACIA ATRÁS, se puede plantear sensor de distancia hacia atrás
-    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize):        # en funcion a posicion de camara
+    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize, maxYValue):        # en funcion a posicion de camara
         # TODO: comprobar que no hay nada detras
         self.setSpeed(-0.1, 0)
         bola_cogida = False
         timeout = time.time() + 4
         while time.time() < timeout:
             _, y, area = self.detectBall()
-            if minObjectiveSize < area < maxObjectiveSize and y <= self.height/4:
+            if minObjectiveSize < area < maxObjectiveSize and y <= maxYValue:
                 bola_cogida = True
                 print("Bola cogida correctamente")
                 break
@@ -398,17 +398,18 @@ class Robot:
         return x, y, area 
 
 
-    def trackObject(self, v_base=0.2, w_base=np.pi/3, catch=True):
+    def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True):
         self.init_camera()
 
         finished = False
         ball_caught = False
-        targetX = self.width/2-40
+        targetX = self.width/2-10
         # targetY = 240/4
-        minObjectiveTargetSize = 6600
-        maxObjectiveTargetSize = 7000
-        detection_tolerance = 7
+        minObjectiveTargetSize = 4500
+        maxObjectiveTargetSize = 8500
+        detection_tolerance = 10
         last_error = 1 # positivo o negativo para determinar la dirección de giro
+        maxYValue = 29
 
         self.release() # Comprobamos que la cesta está arriba
 
@@ -442,7 +443,7 @@ class Robot:
                 x, y, area = self.detectBall()  
                 print("x: ", x, "y: ", y, "area: ", area)
             
-                if area < self.minTargetSize or area > self.maxTargetSize:
+                if area < self.minTargetSize:
                     print("Objeto perdido")
                     break
                 else:
@@ -452,7 +453,7 @@ class Robot:
                 self.setSpeed(v, w)
                 
                 # 3. check la posición válida para coger la bola
-                if (abs(x - targetX) <  detection_tolerance and (minObjectiveTargetSize < area < maxObjectiveTargetSize) and y <= self.height/3):
+                if (abs(x - targetX) <  detection_tolerance and (minObjectiveTargetSize < area < maxObjectiveTargetSize) and y <= maxYValue):
                     # and abs(y - targetY) < detection_tolerance
                     
                     print("Posición válida para coger la bola")
@@ -461,7 +462,7 @@ class Robot:
                     if catch:     
                         self.catch()
                         
-                        if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize):
+                        if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize, maxYValue):
                             print("Fallo al coger la bola")
                             self.release()
                         else:
