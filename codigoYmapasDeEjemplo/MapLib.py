@@ -46,6 +46,8 @@ class Map2D:
         self.connectionMatrix = None
         self.costMatrix =  None
         self.currentPath =  None
+        
+        self.neighbours = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
         if self._loadMap(map_description_file):
             print("Map %s loaded ok" % map_description_file)
@@ -391,12 +393,41 @@ class Map2D:
     # METHODS to IMPLEMENT in P4
     # ############################################################
 
-    # def fillCostMatrix(self, ??):
-    # """
-    # NOTE: Make sure self.costMatrix is a 2D numpy array of dimensions dimX x dimY
-    # TO-DO
-    # """
-    # self.costMatrix = ....
+    def _isInsideMatrix(self, x, y):
+        """
+        Returns True if the cell (x,y) is inside the map matrix
+        """
+        return 0 <= x < self.sizeX and 0 <= y < self.sizeY
+        
+
+    def fillCostMatrix(self, start, goal_x, goal_y): # TODO: hace falta el inicio?
+        """
+        Fills the costMatrix with the cost of going from each cell to the goal cell.
+
+        The cost of going from cell (x,y) to the goal cell is the Manhattan distance between them.
+
+        The goal cell is the cell with coordinates (goal[0], goal[1]).
+
+        The cost of going from a cell to the goal cell is the Manhattan distance between them.
+
+        """
+        self._initCostMatrix()
+        
+        self.cost_matrix[goal_x][goal_y] = 0
+        wavefront = [(goal_x, goal_y)]
+        step = 1
+
+        while wavefront:
+            new_wave = []
+            for x, y in wavefront:
+                for dx, dy in self.neighbours:
+                    nx, ny = x + dx, y + dy
+                    if self.cost_matrix[nx][ny] > step and self.is_connected(x, y, dx, dy):
+                        self.cost_matrix[nx][ny] = step
+                        new_wave.append((nx, ny))
+            wavefront = new_wave
+            step += 1
+        pass
 
 
     def findPath(self, x_ini,  y_ini, x_end, y_end):
@@ -404,18 +435,81 @@ class Map2D:
         x_ini, y_ini, x_end, y_end: integer values that indicate \
             the x and y coordinates of the starting (ini) and ending (end) cell
 
-        NOTE: Make sure self.currentPath is a 2D numpy array
-        ...  TO-DO  ....
-        """
-        # FAKE sample path: [ [0,0], [0,0], [0,0], ...., [0,0]  ]
-        self.currentPath = np.array( [ [0,0] ] * num_steps )
+        Returns True if a path was found, False otherwise.
+        The path is stored in the currentPath variable.
+        """    
         pathFound = True
+        
+        self.currentPath = [(x_ini, y_ini)]
+        x, y = x_ini, y_ini
 
-        # ????
+        while (x, y) != (x_end, y_end):
+            min_val = float('inf')
+            next_pos = None
+
+            for dx, dy in self.neighbours: # defined as [(0, 1), (1, 0), (0, -1), (-1, 0)]
+                nx, ny = x + dx, y + dy
+                if self._isInsideMatrix(nx, ny) and self.cost_matrix[nx][ny] < min_val and self.is_connected(x, y, dx, dy):
+                    min_val = self.cost_matrix[nx][ny]
+                    next_pos = (nx, ny)
+
+            if next_pos:
+                x, y = next_pos
+                self.currentPath.append(next_pos)
+            else:
+                pathFound = False
 
         return pathFound
 
 
-    # def replanPath(self, ??):
-    # """ TO-DO """
+        # TODO: EN ROBOT
+        
+    def definePositionValues(self, x, y, th):
+        """ Define la posición del robot """
+        self.lockOdometry.acquire()
+        self.x = x
+        self.y = y
+        self.th = th
+        self.lock_odometry.release()
 
+
+    def go_to(self, x_obj, y_obj):
+        """ Mueve la entidad al objetivo 
+            x_obj, y_obj: coordenadas del objetivo en m
+        """
+        # TODO no estoy seguro si es necesario calcular el ángulo yendo en 4-vecinos,
+        # aún así ajusta el ángulo en caso de que tuviera algo de fallo 
+        x, y, th = self.readOdometry()
+        angle = th - math.degrees(math.atan2(y_obj - y, x_obj - x))
+        print(f"Girando a {angle:.2f} grados")
+        self.waitAngle(angle)
+        print(f"Moviéndose a la posición ({x_obj}, {y_obj})")
+        if(self.detect_obstacle()):
+            print("Obstáculo detectado, replanificando ruta...")
+            self.replan_path(x, y, x_obj, y_obj)
+        self.waitPosition(x_obj, y_obj)
+        
+    def detect_obstacle(self):
+        """ Simulación de detección de obstáculos con ultrasonido """
+        # TODO: implementar
+        print("Leyendo ultrasonido...")
+        return False 
+    
+    def replan_path(self, start_x, start_y, goal_x, goal_y):
+        """ Genera el camino y lo ejecuta """
+        self.fill_cost_matrix(goal_x, goal_y)
+        path = self.find_path(start_x, start_y, goal_x, goal_y)
+
+        for (x, y) in path:
+            x *= self.sizeCell
+            y *= self.sizeCell  
+            
+            self.go_to(start_x, start_y, x, y)
+            start_x, start_y = x, y
+
+    def calibrateOdometry(self):
+        """ Calibra la odometría del robot """
+        # TODO: implementar
+        # comprobar con la distancia al obstáculo (estando en la misma celda)
+        # TODO: si ponemos el ultrasonidos hacia el lado se puede utilizar también
+        
