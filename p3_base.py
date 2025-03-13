@@ -42,7 +42,6 @@ def main(args):
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
-        robot.release()
         robot.setSpeed(0, 0)
         time.sleep(2) 
         robot.stopOdometry()
