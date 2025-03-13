@@ -4,7 +4,6 @@ from __future__ import \
     print_function  # use python 3 syntax but make it compatible with python 2
 from __future__ import division
 
-import io  # ''
 import sys
 import time  # import the time library for the sleep function
 from multiprocessing import Lock, Process, Value
@@ -13,7 +12,6 @@ import brickpi3  # import the BrickPi3 drivers
 import cv2
 import numpy as np
 import picamera
-from get_color_blobs_diego import detect_ball
 from lib.utils import deg_to_rad, norm_pi, rad_to_deg
 from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
 from picamera.array import PiRGBArray

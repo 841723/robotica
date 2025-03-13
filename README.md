@@ -6,7 +6,7 @@ Autores: 839385 Miguel Arasanz, 844417 Andrei Dumbrava, 841723 Diego Roldán.
 
 Genera las claves ssh ejecutando key-gen.sh
 
-Para ejecutar el fichero Python en cuestión, configurar en exec.sh y ejecutarlo.
+Para ejecutar el fichero Python en cuestión, configurar en `exec.sh` y ejecutarlo `python p3_base.py`.
 
 **Cambios realizados sobre la plantilla proporcionada:**
 
