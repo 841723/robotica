@@ -254,7 +254,7 @@ def main(args):
             print('radioD y radioAlfa tienen que ser positivos')
             exit(1)
             
-        robot = Robot(log_filename=args.log)
+        robot = Robot(log_filename=args.log, verbose=args.verbose)
 
         print("X value at the beginning from main X= %.2f" %(robot.x.value))
 
@@ -267,8 +267,8 @@ def main(args):
         robot.startOdometry()
         if testcase == 0:
             # print(f"trayectoriaOcho(robot, {args.radioD}, 0.4)")
-            # trayectoriaOcho(robot, args.radioD, 0.4)
-            pruebaOcho(robot, args.radioD, 0.4)
+            trayectoriaOcho(robot, args.radioD, 0.4)
+            # pruebaOcho(robot, args.radioD, 0.4)
         elif testcase == 1:
             # print(f"trayectoriaTang(robot, {args.radioD}, {args.radioAlfa}, 0.6, 0.1, 0.1)")
             trayectoriaTang(robot, args.radioAlfa, args.radioD, args.R, 0.4, 0.2)   
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--radioD", help="Radio para el 8 (m)",
-                        type=float, default=0.2)
+                        type=float, default=0.4)
     parser.add_argument("-a", "--radioAlfa", help="Radio para alfa de la trayectoria 2 (m)",
                         type=float, default=0.4)
     parser.add_argument("-R", "--R", help="Longitud de la recta de la trayectoria 2 (m)",
@@ -311,6 +311,8 @@ if __name__ == "__main__":
                         type=str, default=None) 
     parser.add_argument("-t", "--testcase", help="Testcase",
                         type=int, default=2)
+    parser.add_argument("-v", "--verbose", help="Verbose mode",
+                        action='store_true', default=False)
     args = parser.parse_args()
 
     main(args)

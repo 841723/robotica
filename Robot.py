@@ -42,12 +42,18 @@ class Robot:
         self.PORT_MOTOR_PINZA = self.BP.PORT_A
         self.PORT_MOTOR_DERECHA = self.BP.PORT_B
         self.PORT_MOTOR_IZQUIERDA = self.BP.PORT_C
+        self.PORT_GYRO = self.BP.PORT_3
+
+        # set up gyro
+        self.BP.set_sensor_type(self.PORT_GYRO, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
+
 
         # Configure sensors
-        self.motor_wait_time = 2 
+        self.motor_dps_limit = 150
+        self.motor_wait_time = self.motor_dps_limit / -self.PINZA_ABAJO
 
         # move motor A to the starting position
-        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=150)
+        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=self.motor_dps_limit)
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
 
 
@@ -105,8 +111,8 @@ class Robot:
         self.log_file.close()
         with open(self.log_filename, "a") as f:
             f.write("#%s\n" % time.strftime("%H:%M:%S %d/%m/%Y"))
-        self.setSpeed()
         
+        time.sleep(1)
         
     def setSpeed(self, v,w):
         """ Establece la velocidad de los motores según la velocidad lineal y angular dadas 
@@ -151,7 +157,7 @@ class Robot:
         self.lock_odometry.acquire()
         x = self.x.value
         y = self.y.value
-        th = norm_pi(self.th.value)        
+        th = norm_pi(self.th.value)
         self.lock_odometry.release()
         return x, y, th
 
@@ -162,6 +168,7 @@ class Robot:
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
         print("PID: ", self.p.pid)
+        time.sleep(2)   
 
     def updateOdometry(self): 
         """This function will be run periodically to update the odometry values
@@ -185,7 +192,17 @@ class Robot:
                 w = self.R/self.L * (wDerecha - wIzquierda)
 
                 x_read, y_read, th_read = self.readOdometry()
-                dx, dy = 0, 0
+                dx, dy, new_th = 0, 0, 0
+                try:
+                    new_th = self.BP.get_sensor(self.PORT_GYRO)
+                    # print("Gyro: ", new_th)
+                    new_th = norm_pi(deg_to_rad(-new_th[0]))
+                    print("Gyro rads: ", new_th)
+                except brickpi3.SensorError as error:
+                    if self.verbose:
+                        print("Error reading gyro sensor: ", error)
+                    new_th = th_read + w*self.P
+                
 
                 if w == 0:
                     dx = self.P*v*np.cos(th_read)
@@ -233,7 +250,7 @@ class Robot:
         return min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi)))
 
     
-    def waitAngle(self, ang_final, tolerancia=0.000005):
+    def waitAngle(self, ang_final, tolerancia=0.02):
         """Waits until the robot reaches a specific angle with a given tolerance
         :param ang_final: desired angle in radians
         :param tolerancia: tolerance in radians 
@@ -325,7 +342,7 @@ class Robot:
             print("La cesta ha bajado")
         return True
     
-    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize, maxYValue):
+    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize, maxYValue, colorMasks=None):
         """Checks if the ball has been caught moving backwards 
         :param minObjectiveSize: minimum area of the ball to consider it as caught
         :param maxObjectiveSize: maximum area of the ball to consider it as caught
@@ -337,7 +354,7 @@ class Robot:
         timeout = time.time() + 2
         # loop until the ball is caught or the timeout is reached
         while time.time() < timeout:
-            _, y, area = self.detectBall()
+            _, y, area = self.detectBall(colorMasks)
             # if the ball is in the objective area and the y position is valid we consider the ball caught
             if minObjectiveSize < area < maxObjectiveSize and y <= maxYValue:
                 bola_cogida = True
@@ -383,7 +400,7 @@ class Robot:
         return img
     
     
-    def detectBall(self):
+    def detectBall(self, colorMasks=None):
         """Takes a photo, tries to detect the ball in it and returns the position and area of the ball (if detected)
         """        
         img_BGR = self.takePhoto()
@@ -391,20 +408,15 @@ class Robot:
         # Convert BGR to HSV
         img_HSV = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2HSV)
 
-        # Define ranges of red color in HSV
-        redMin1 = np.array([0, 70, 50])      # Lower range
-        redMax1 = np.array([10, 255, 255])
+        totalMask = np.zeros((self.height, self.width), np.uint8)
+        for colorMask in colorMasks:
+            # print("Color mask: ", colorMask)
+            mask = cv2.inRange(img_HSV, colorMask[0], colorMask[1])
+            totalMask = cv2.bitwise_or(totalMask, mask)
 
-        redMin2 = np.array([170, 70, 50])    # Upper range
-        redMax2 = np.array([180, 255, 255])
-
-        # Create a mask for the red color
-        mask1 = cv2.inRange(img_HSV, redMin1, redMax1)
-        mask2 = cv2.inRange(img_HSV, redMin2, redMax2)
-        mask_red = cv2.bitwise_or(mask1, mask2)
 
         # Find contours in the mask
-        _, contours, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, _ = cv2.findContours(totalMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         cx, cy, area = 0, 0, 0 
 
@@ -428,7 +440,7 @@ class Robot:
         return cx, cy, area 
 
 
-    def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True):
+    def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True, targetX=160, minObjectiveTargetSize=4500, maxObjectiveTargetSize=8500, detection_tolerance=30, maxYValue=32, colorMasks=None):
         """
         Tracks the ball and tries to catch it. The robot will move towards the ball until it is in the objective area
         and then it will try to catch it. If the catch is successful, the robot will stop. If the catch is not
@@ -438,37 +450,34 @@ class Robot:
         :param catch: boolean to indicate if the robot should catch the ball
         """
         self.init_camera()
-        ### Tracking parameters
         finished = False
         ball_caught = False
-        targetX = self.width/2-10
-        minObjectiveTargetSize = 4500
-        maxObjectiveTargetSize = 8500
-        detection_tolerance = 30
+        ### Tracking parameters
         last_error = 1 # positive or negative to know the direction of the error
-        maxYValue = 32
+
 
         self.release() # Check if the basket is up
 
         while not finished:
             targetPositionReached = False
             # 1. search the most promising blob
-            x, y, area = self.detectBall()
+            x, y, area = self.detectBall(colorMasks)
 
             # Rotate until the object is found
             while area < self.minTargetSize and abs(x - targetX) >  detection_tolerance:
                 search_v, search_w = calcSearchSpeed(np.sign(last_error) * w_base)
                 self.setSpeed(search_v, search_w)
                 time.sleep(self.tracking_period)
-                x, y, area = self.detectBall()
+                x, y, area = self.detectBall(colorMasks)
 
             # Object found
-            print("Objeto encontrado")
+            if self.verbose:
+                print("Objeto encontrado")
             self.setSpeed(0, 0)
 
             while not targetPositionReached and not ball_caught: 
                 # 2. v, w calculation to reach the target ( ball )
-                x, y, area = self.detectBall()
+                x, y, area = self.detectBall(colorMasks)
 
                 if area < self.minTargetSize:
                     if self.verbose:
@@ -489,7 +498,7 @@ class Robot:
                     if catch:     
                         self.catch()
                         # Check if the ball has been caught
-                        if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize, maxYValue):
+                        if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize, maxYValue, colorMasks):
                             self.release()
                             if self.verbose:
                                 print("Bola no cogida")
