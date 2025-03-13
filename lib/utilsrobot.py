@@ -49,7 +49,7 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
 
     
     # Constantes para ajustar sensibilidad (cómo de lineal es la sigmoidal)
-    kp_angle = 0.1   # Factor proporcional para posición
+    kp_angle = 0.05   # Factor proporcional para posición
     kp_size = 0.1      # Factor proporcional para tamaño
     
     # Función sigmoid para suavizar la respuesta 
@@ -68,7 +68,7 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     # Si la bola está a la izquierda del objetivo -> girar derecha
     w_adjusted = - (w * sigmoid(error_x, kp_angle) - (w/2))
     
-    if (abs(w_adjusted) < 0.2):
+    if (abs(w_adjusted) < 0.33):
         w_adjusted = 0
     
     # print("sigmoid", sigmoid(error_size, kp_size))

@@ -20,7 +20,7 @@ from picamera.array import PiRGBArray
 
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, verbose=False):
         """
         Initialize basic robot params. 
 
@@ -44,11 +44,11 @@ class Robot:
         self.PORT_MOTOR_IZQUIERDA = self.BP.PORT_C
 
         # Configure sensors
+        self.motor_wait_time = 2 
 
         # move motor A to the starting position
-        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=100)
+        self.BP.set_motor_limits(self.PORT_MOTOR_PINZA, dps=150)
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
-        self.motor_wait_time = 2 
 
 
         # reset encoder B and C (or all the motors you are using)
@@ -56,12 +56,13 @@ class Robot:
            self.BP.get_motor_encoder(self.PORT_MOTOR_DERECHA))
         self.BP.offset_motor_encoder(self.PORT_MOTOR_IZQUIERDA,
            self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA))
-        # self.BP.offset_motor_encoder(self.PORT_MOTOR_PINZA,
-        #       self.BP.get_motor_encoder(self.PORT_MOTOR_PINZA))
         
 
         # configure camera
         self.camera = None
+        
+        ## Verbose mode
+        self.verbose = verbose
 
         ##################################################
         # odometry shared memory values
@@ -75,27 +76,24 @@ class Robot:
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
         self.rawCapture = None
 
-        # if we want to block several instructions to be run together, we may want to use an explicit Lock
+        # If we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
         
-        # odometry update period
+        # Odometry update period
         self.P = 0.05
         
         # Tracking update period
         self.tracking_period = 0.01
-        
-        self.stream = None
-        
-        ##################################################
-        #### VARIABLES PARA EL SEGUIMIENTO DE OBJETOS ####
-        ##################################################
-        
+
+
+        # Minimum target size to consider the object as the target
         self.minTargetSize = 5
+
+        # Camera resolution
         self.width = 320
         self.height = 240
-        # self
 
-        # save into log file
+        # Save into log file
         self.log_filename = None
         if log_filename is not None:
             self.log_filename = log_filename
@@ -107,14 +105,21 @@ class Robot:
         self.log_file.close()
         with open(self.log_filename, "a") as f:
             f.write("#%s\n" % time.strftime("%H:%M:%S %d/%m/%Y"))
+        self.setSpeed()
         
         
     def setSpeed(self, v,w):
-        """ Establece la velocidad de los motores según la velocidad lineal y angular dadas """
+        """ Establece la velocidad de los motores según la velocidad lineal y angular dadas 
+        :param v: velocidad lineal
+        :param w: velocidad angular
+        """
         
         ## Calculo de las velocidades angulares de cada rueda
         w_d = v/self.R + w*self.L/(2*self.R)
         w_i = v/self.R - w*self.L/(2*self.R)
+        
+        if self.verbose:
+            print("v --> %.2f; w --> %.2f; w_d --> %.2f; w_i--> %.2f" % (v, w, w_d, w_i))
 
         ## Añadir las velocidades a los motores
         self.BP.set_motor_dps(self.PORT_MOTOR_IZQUIERDA, rad_to_deg(w_i))
@@ -128,7 +133,10 @@ class Robot:
 
 
     def readSpeed(self):
-        """ Obtención de la velocidad lineal y angular """
+        """Obtención de la velocidad lineal y angular 
+        
+        :return: v, w
+        """
         self.lock_odometry.acquire()
         v = self.v.value
         w = self.w.value
@@ -136,7 +144,10 @@ class Robot:
         return v, w
 
     def readOdometry(self):
-        """ Devuelve la posición y orientación del robot en un plano 2D """
+        """Devuelve la posición y orientación del robot en un plano 2D 
+
+        :return: x, y, th
+        """
         self.lock_odometry.acquire()
         x = self.x.value
         y = self.y.value
@@ -145,15 +156,16 @@ class Robot:
         return x, y, th
 
     def startOdometry(self):
-        """ This starts a new process/thread that will be updating the odometry periodically """
+        """This starts a new process/thread that will be updating the odometry periodically 
+        """
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
         print("PID: ", self.p.pid)
 
-    # You may want to pass additional shared variables besides the odometry values and stop flag
     def updateOdometry(self): 
-        """ This function will be run periodically to update the odometry values """
+        """This function will be run periodically to update the odometry values
+         """
 
         while not self.finished.value:
             # current processor time in a floating point value, in seconds
@@ -202,31 +214,34 @@ class Robot:
             if tEnd - tIni < self.P:
                 time.sleep(self.P - (tEnd-tIni))
 
-        sys.stdout.write("Stopping odometry ... X=  %.2f, \
-                Y=  %.2f, th=  %.2f \n" %(self.x.value, self.y.value, self.th.value))
+        sys.stdout.write("Stopping odometry ... X -->  %.2f, \
+                Y -->  %.2f, th -->  %.2f \n" %(self.x.value, self.y.value, self.th.value))
 
 
-    # Stop the odometry thread.
     def stopOdometry(self):
+        """Stop the odometry thread
+        """
         self.finished.value = True
         self.BP.reset_all()
         
     def angleDistance(self, th2, th1):
-        """
-        Devuelve la distancia entre dos ángulos en radianes. Los parametros son los ángulos en radianes de los que se quiere calcular la distancia.
+        """Calculates the distance between two angles in radians
+        :param th2: angle 2
+        :param th1: angle 1
+        :return: distance between the angles
         """
         return min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi)))
 
     
     def waitAngle(self, ang_final, tolerancia=0.000005):
-        """
-        Espera hasta que el robot alcance un ángulo específico.
-        Se recibe un ángulo en radianes y se espera hasta que el robot alcance ese ángulo.
-        Estimación según la tolerancia al fallo entre el angulo objetivo y el calculado.
+        """Waits until the robot reaches a specific angle with a given tolerance
+        :param ang_final: desired angle in radians
+        :param tolerancia: tolerance in radians 
         """
         error_count = 0
         time.sleep(self.P)
-        print(ang_final)
+        if self.verbose:
+            print("Esperando hasta alcanzar el ángulo: ", ang_final)
         t_siguiente = time.time()
         [_, _, ang_actual] = self.readOdometry()
         distancia_a_final = self.angleDistance(ang_final, ang_actual)
@@ -241,39 +256,40 @@ class Robot:
             [_, _, ang_actual] = self.readOdometry()
             distancia_a_final = self.angleDistance(ang_final, ang_actual)
 
-            print("Ang_actual: ", ang_actual,
-                  "Ang_final: ", ang_final,
-                  "Error: ", distancia_a_final)
+            if self.verbose:
+                print("Angulo destino -->", ang_final , "; Angulo actual --> ", ang_actual, "; Error --> ", distancia_a_final)
             
             if distancia_a_final > ultima_distancia :
                 error_count += 1
                 if error_count > 3:
-                    # si nos alejamos del ángulo deseado, paramos
-                    print("Error aumentando", distancia_a_final, "; es mayor que", ultima_distancia)
+                    # If we are moving away from the desired angle, we stop
+                    if self.verbose:
+                        print("Error aumentando", distancia_a_final, "; es mayor que", ultima_distancia)
                     break
             else:
                 error_count = 0
-                
-        print("Angulo deseado: ", ang_final, "Angulo alcanzado: ", ang_actual)
-        print("Error: ", distancia_a_final)
+        if self.verbose:
+            print("Angulo deseado: ", ang_final, "Angulo alcanzado: ", ang_actual)
+            print("Error: ", distancia_a_final)
             
         
     def waitPosition(self, x_deseado, y_deseado, tolerancia=0.03):
+        """Waits until the robot reaches a specific position with a given tolerance
+        :param x_deseado: desired x position
+        :param y_deseado: desired y position
+        :param tolerancia: tolerance in meters
         """
-        Espera hasta que el robot alcance una posición específica.
-        :param x_deseado: Posición x deseada
-        :param y_deseado: Posición y deseada
-        :param tolerancia: Tolerancia de posición
-        """
+
         time.sleep(self.P)
         
         t_siguiente = time.time()
         [x_actual, y_actual, _] = self.readOdometry()
         
         diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
-
-        print("Posición inicial:", x_actual, y_actual)
-        print("Esperando hasta alcanzar:", x_deseado, y_deseado)
+        if self.verbose:
+            print("Posición inicial:", x_actual, y_actual)
+            print("Esperando hasta alcanzar:", x_deseado, y_deseado)
+            print("Error:", diferencia_posicion)
         error_count = 0
 
         while diferencia_posicion > tolerancia:
@@ -286,204 +302,216 @@ class Robot:
             [x_actual, y_actual, _] = self.readOdometry()
             diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
             
-            
-            print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
+            if self.verbose:
+                print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
             
             if diferencia_posicion > diferencia_posicion_anterior:
                 error_count += 1
                 if error_count > 3:
-                    # si nos alejamos de la posición deseada, paramos
+                    # If we are moving away from the desired position, we stop
                     print("Error aumentando", diferencia_posicion, "; es mayor que", diferencia_posicion_anterior)
                     break
-        print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
-        print("Error:", diferencia_posicion)
+                
+        if self.verbose:
+            print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
+            print("Error:", diferencia_posicion)
 
-    # Baja la cesta
     def catch(self):
+        """Lowers the basket to catch the ball
+        """
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ABAJO)
         time.sleep(self.motor_wait_time)
+        if self.verbose:
+            print("La cesta ha bajado")
         return True
     
-    # Va hacia atrás y comprueba si hay algo del color de la bola en el rango
-    # TODO: PROBLEMA SI CHOCARA HACIA ATRÁS, se puede plantear sensor de distancia hacia atrás
-    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize, maxYValue):        # en funcion a posicion de camara
-        # TODO: comprobar que no hay nada detras
-        self.setSpeed(-0.1, 0)
+    def checkBallCaught(self, minObjectiveSize, maxObjectiveSize, maxYValue):
+        """Checks if the ball has been caught moving backwards 
+        :param minObjectiveSize: minimum area of the ball to consider it as caught
+        :param maxObjectiveSize: maximum area of the ball to consider it as caught
+        :param maxYValue: maximum y value of the ball to consider it as caught
+        """
+        # Set speed to move backwards     
+        self.setSpeed(-0.15, 0)
         bola_cogida = False
-        timeout = time.time() + 4
+        timeout = time.time() + 2
+        # loop until the ball is caught or the timeout is reached
         while time.time() < timeout:
             _, y, area = self.detectBall()
+            # if the ball is in the objective area and the y position is valid we consider the ball caught
             if minObjectiveSize < area < maxObjectiveSize and y <= maxYValue:
                 bola_cogida = True
-                print("Bola cogida correctamente")
-                break
-        
+                break        
+        # Stop the robot
         self.setSpeed(0, 0)
-
         return bola_cogida
 
-    
-    # Sube la cesta
+
     def release(self):
+        """Lifts the basket to release the ball
+        """
         self.BP.set_motor_position(self.PORT_MOTOR_PINZA, self.PINZA_ARRIBA)
         time.sleep(self.motor_wait_time)
-        return True
+        if self.verbose:
+            print("La cesta ha subido de nuevo")
 
-    def init_camera(self): # TODO: check
+    def init_camera(self): 
+        """Initializes the camera
+        """
         self.camera = picamera.PiCamera()
 
+        #set camera resolution and framerate
         self.camera.resolution = (self.width, self.height)
         #self.camera.resolution = (640, 480)
         self.camera.framerate = 32
         self.rawCapture = PiRGBArray(self.camera, size=(self.width, self.height))
         
+        # Set camera parameters to optimize capture's time
         self.camera.exposure_mode = 'sports'
         self.camera.awb_mode = 'auto'  
 
-        # self.stream = io.BytesIO()
         # allow the camera to warmup
         time.sleep(0.1)
             
-    # Devuelve la imagen capturada por la cámara
     def takePhoto(self):
+        """Returns the current image from the camera
+        """
         self.rawCapture.truncate(0)
         self.rawCapture.seek(0)        
         self.camera.capture(self.rawCapture, format="bgr", use_video_port=True)
         img = self.rawCapture.array
         return img
     
-        # with picamera.PiCamera() as camera:
-        # stream = io.BytesIO()
-        # for foo in camera.capture_continuous(stream, format='jpeg'):
-        #     # Truncate the stream to the current position (in case
-        #     # prior iterations output a longer image)
-        #     stream.truncate()
-        #     stream.seek(0)
-        
-        
-        # stream = io.BytesIO()
-        # self.camera.capture(stream, format='jpeg')
-        # self.camera.stop_preview()
-        # self.camera.close()
-        # stream.seek(0)
-        # image = np.frombuffer(stream.getvalue(), dtype=np.uint8)
-        # img_BGR = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        # return img_BGR
     
-    # Busca la bola en la imagen y devuelve su posición y área
     def detectBall(self):
-        
-        # mask=cv2.inRange(img, colorRangeMin, colorRangeMax)
-        # # apply the mask
-        # img = cv2.bitwise_and(img, img, mask = mask) # TODO: añadir erosión o difuminado? 
-        # keypoints = detector.detect(255-mask)
-        
-        # # Take biggest blob
-        # x, y, area = 0, 0, 0
-        # for kp in keypoints:
-        #     if kp.size > area:
-        #         x = kp.x
-        #         y = kp.y
-        #         area = kp.size
+        """Takes a photo, tries to detect the ball in it and returns the position and area of the ball (if detected)
+        """        
+        img_BGR = self.takePhoto()
 
-        # # posicion a la esquina superior izquierda
+        # Convert BGR to HSV
+        img_HSV = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2HSV)
 
-        # detection_tolerance = 0.1
-        # targetX = 0.5
-        # objectiveTargetSize = 0.1
+        # Define ranges of red color in HSV
+        redMin1 = np.array([0, 70, 50])      # Lower range
+        redMax1 = np.array([10, 255, 255])
 
-        img = self.takePhoto()
-        x, y, area = detect_ball(img) # TODO: poner en la misma función
-        print(x, y, area)
-        return x, y, area 
+        redMin2 = np.array([170, 70, 50])    # Upper range
+        redMax2 = np.array([180, 255, 255])
+
+        # Create a mask for the red color
+        mask1 = cv2.inRange(img_HSV, redMin1, redMax1)
+        mask2 = cv2.inRange(img_HSV, redMin2, redMax2)
+        mask_red = cv2.bitwise_or(mask1, mask2)
+
+        # Find contours in the mask
+        _, contours, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        cx, cy, area = 0, 0, 0 
+
+        # Get the x, y and area of the ball
+        if contours:
+            # Tomar el contorno más grande (suponiendo que es la pelota)
+            largest_contour = max(contours, key=cv2.contourArea)
+            area = cv2.contourArea(largest_contour)
+
+            # Calcular el centroide (posición de la pelota)
+            M = cv2.moments(largest_contour)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+            else:
+                cx, cy = 0, 0  # Evitar división por cero
+
+        if self.verbose:
+            print("Objeto detectado en posición: ({}, {}) con área: {}".format(cx, cy, area))
+
+        return cx, cy, area 
 
 
     def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True):
+        """
+        Tracks the ball and tries to catch it. The robot will move towards the ball until it is in the objective area
+        and then it will try to catch it. If the catch is successful, the robot will stop. If the catch is not
+        successful the robot will start looking for the ball again.
+        :param v_base: base linear speed
+        :param w_base: base angular speed
+        :param catch: boolean to indicate if the robot should catch the ball
+        """
         self.init_camera()
-
+        ### Tracking parameters
         finished = False
         ball_caught = False
         targetX = self.width/2-10
-        # targetY = 240/4
         minObjectiveTargetSize = 4500
         maxObjectiveTargetSize = 8500
-        detection_tolerance = 10
-        last_error = 1 # positivo o negativo para determinar la dirección de giro
-        maxYValue = 29
+        detection_tolerance = 30
+        last_error = 1 # positive or negative to know the direction of the error
+        maxYValue = 32
 
-        self.release() # Comprobamos que la cesta está arriba
-
-        # clear log file
-        self.log_file = open(self.log_filename, "w")
-        self.log_file.close() 
+        self.release() # Check if the basket is up
 
         while not finished:
-            
             targetPositionReached = False
             # 1. search the most promising blob
-            x, y, area = self.detectBall()         
-            print(x, y, area)
-            
-            
-            # Dar vueltas hasta encontrar un objeto
-            while area < self.minTargetSize and abs(x - targetX) >  detection_tolerance: 
-                # print("Objeto no encontrado")
-                search_v, search_w = calcSearchSpeed(np.sign(last_error) * w_base)             
+            x, y, area = self.detectBall()
+
+            # Rotate until the object is found
+            while area < self.minTargetSize and abs(x - targetX) >  detection_tolerance:
+                search_v, search_w = calcSearchSpeed(np.sign(last_error) * w_base)
                 self.setSpeed(search_v, search_w)
                 time.sleep(self.tracking_period)
                 x, y, area = self.detectBall()
 
-
-            # Objeto encontrado, paramos y buscamos
+            # Object found
             print("Objeto encontrado")
             self.setSpeed(0, 0)
-            
+
             while not targetPositionReached and not ball_caught: 
-                # 2. v y w para acercarse a la bola
-                x, y, area = self.detectBall()  
-                print("x: ", x, "y: ", y, "area: ", area)
-            
+                # 2. v, w calculation to reach the target ( ball )
+                x, y, area = self.detectBall()
+
                 if area < self.minTargetSize:
-                    print("Objeto perdido")
+                    if self.verbose:
+                        print("Objeto perdido o muy pequeño")
                     break
                 else:
                     last_error = x-targetX
-                
+
                 v, w = calcTrackSpeed(x,area, targetX, minObjectiveTargetSize, maxObjectiveTargetSize, v=v_base, w=w_base)
                 self.setSpeed(v, w)
-                
-                # 3. check la posición válida para coger la bola
+
+                # 3. check if the ball is in the target position
                 if (abs(x - targetX) <  detection_tolerance and (minObjectiveTargetSize < area < maxObjectiveTargetSize) and y <= maxYValue):
-                    # and abs(y - targetY) < detection_tolerance
-                    
-                    print("Posición válida para coger la bola")
+                    if self.verbose:
+                        print("Posición válida para coger la bola")
                     self.setSpeed(0, 0)
-                    
+
                     if catch:     
                         self.catch()
-                        
+                        # Check if the ball has been caught
                         if not self.checkBallCaught(minObjectiveTargetSize, maxObjectiveTargetSize, maxYValue):
-                            print("Fallo al coger la bola")
                             self.release()
+                            if self.verbose:
+                                print("Bola no cogida")
                         else:
-                            print("Bola cogida")
                             ball_caught = True
-                            
-                    else: # Si no hace falta coger la bola
-                        targetPositionReached = True
-                        
-                # Si no estamos en el target o se ha escapado la bola continuamos           
-                # time.sleep(self.tracking_period)
+                            if self.verbose:
+                                print("Bola cogida")
 
+                    else: # If we don't want to catch the ball we just stop
+                        targetPositionReached = True
+
+            # 4. Check if the ball has been caught or the target position has been reached to finish the tracking
             if targetPositionReached or ball_caught:
                 finished = True
                 self.setSpeed(0, 0)
-                    
-        return finished
-    
+
+        return
 
     def __del__(self):
         # self.finished.value = True
+        if self.verbose:
+            print("Robot object deleted")
         self.setSpeed(0,0)
         self.BP.reset_all()
 

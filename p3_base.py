@@ -10,68 +10,32 @@ from Robot import Robot
 
 def main(args):
     catch = True
+    celebrate = False
     try:
 
         # Initialize Odometry. Default value will be 0,0,0
-        robot = Robot(log_filename=args.log)
+        robot = Robot(log_filename=args.log, verbose=True)
 
         # 1. launch updateOdometry thread()
         robot.startOdometry()
 
         # 2. Loop running the tracking until ??, then catch the ball
-        # TODO: ADD to the Robot class a method to track an object, given certain parameters
-        # for example the different target properties we want (size, position, color, ..)
-        # or a boolean to indicate if we want the robot to catch the object or not
-        # At least COLOR, the rest are up to you, but always put a default value.
-        
-        res = robot.trackObject(catch=catch)
-        # robot.catch()
-        # robot.release()
-        robot.setSpeed(0, 0)
-        robot.setSpeed(0, np.pi/2)
-
-        # robot.init_camera()
-        # time.sleep(2)
-
-        # for img in robot.camera.capture_continuous(robot.rawCapture, format="bgr", use_video_port=True):
-
-        #     frame = img.array
-        #     cv2.imshow('Captura', frame)
-        #     # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        #     # clear the stream in preparation for the next frame
-        #     robot.rawCapture.truncate(0)
-        #     k = cv2.waitKey(1) & 0xff
-        #     if k == 27:
-        #         robot.camera.close()
-        #         break
-        #     if k == ord('s'):
-        #         cv2.imwrite("media/local/captura_" + str(time.time()) + ".jpg", frame)
-        #         print("Captura guardada")
-
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-        # if args.color == 'r':
-        #     print("Tracking red ball ...")
-        #     colorRangeMin = redMin
-        #     colorRangeMax = redMax
-            
-        # else:
-        #     print("Tracking blue ball ...")
-        #     colorRangeMin = blueMin
-        #     colorRangeMax = blueMax
-
-        # res = robot.trackObject(colorRangeMin, colorRangeMax, target, targetSize, catch)
-        # robot.setSpeed(0, 0)
-
-        # if res:
-        #   robot.catch()
-
+        robot.trackObject(catch=catch)
+        if celebrate:
+            robot.setSpeed(0, 2*np.pi)
+            time.sleep(2)
+            for _ in range(3):
+                robot.release()
+                time.sleep(0.4)
+                robot.catch()
+                time.sleep(0.4)
 
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
-        time.sleep(10)
+        robot.release()
+        robot.setSpeed(0, 0)
+        time.sleep(2)
         robot.stopOdometry()
 
 
