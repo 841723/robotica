@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from lib.simubot import simubot
 
 # Dibuja robot en location_eje con color (c) y tamano (p/g)
-def dibrobot(loc_eje,c,tamano):
+def dibrobot(loc_eje,c='red',tamano='p'):
   if tamano=='p':
     largo=0.1
     corto=0.05

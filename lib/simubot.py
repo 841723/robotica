@@ -24,10 +24,48 @@ def norm_pi(ang):
   return ang
 
 def hom(x):
+  """
+  Crea una matriz de transformación homogénea 3x3 a partir de un punto 2D (x, y)
+  y un ángulo de rotación.
+  
+  Argumentos:
+      x (numpy.ndarray): Un vector de 3 elementos que contiene:
+          - x[0]: coordenada x
+          - x[1]: coordenada y
+          - x[2]: ángulo de rotación 
+  
+  Retorna:
+      numpy.ndarray: Una matriz de transformación homogénea 3x3
+      
+  Ejemplo:
+      >>> x = np.array([1, 2, 30])  # x=1, y=2, ángulo=30°
+      >>> T = hom(x)
+  """
   return np.array([[np.cos(x[2]), -np.sin(x[2]), x[0]],
                    [np.sin(x[2]), np.cos(x[2]), x[1]],
                    [0, 0, 1]])
 
 def loc(x):
+  """
+    Extrae la ubicación (x, y) y el ángulo de rotación desde una 
+    matriz de transformación homogénea 3x3.
+    
+    Argumentos:
+        T (numpy.ndarray): Una matriz de transformación homogénea 3x3
+    
+    Retorna:
+        numpy.ndarray: Un vector de 3 elementos que contiene:
+            - [0]: coordenada x
+            - [1]: coordenada y
+            - [2]: ángulo de rotación en grados
+            
+    Ejemplo:
+        >>> T = np.array([[0.866, -0.5, 1],
+        ...               [0.5, 0.866, 2],
+        ...               [0, 0, 1]])
+        >>> x = loc(T)  # Retorna: array([1, 2, 30])
+    """
   return np.array([x[0,2], x[1,2], norm_pi(np.arctan2(x[1,0],x[0,0]))])
+
+
 
