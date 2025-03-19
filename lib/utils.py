@@ -117,3 +117,10 @@ def polares(dx, dy, theta):
     B = norm_pi(np.arctan2(dy, dx) + np.pi)
     A = B - theta
     return np.array([P, A, B])
+
+def distancia_angular(th1, th2):
+    return norm_pi(min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi))))
+
+
+def distancia(x1,x2):
+  return np.sqrt((x1[0]-x2[0])**2+(x1[1]-x2[1])**2)
