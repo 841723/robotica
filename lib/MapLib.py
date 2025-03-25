@@ -400,7 +400,7 @@ class Map2D:
         return 0 <= x < self.sizeX and 0 <= y < self.sizeY
         
 
-    def fillCostMatrix(self, start, goal_x, goal_y): # TODO: hace falta el inicio?
+    def fillCostMatrix(self, goal_x, goal_y): 
         """
         Fills the costMatrix with the cost of going from each cell to the goal cell.
 
@@ -430,7 +430,7 @@ class Map2D:
         pass
 
 
-    def findPath(self, x_ini,  y_ini, x_end, y_end):
+    def planPath(self, x_ini,  y_ini, x_end, y_end):
         """
         x_ini, y_ini, x_end, y_end: integer values that indicate \
             the x and y coordinates of the starting (ini) and ending (end) cell
@@ -460,56 +460,11 @@ class Map2D:
                 pathFound = False
 
         return pathFound
-
-
-        # TODO: EN ROBOT
-        
-    def definePositionValues(self, x, y, th):
-        """ Define la posición del robot """
-        self.lockOdometry.acquire()
-        self.x = x
-        self.y = y
-        self.th = th
-        self.lock_odometry.release()
-
-
-    def go_to(self, x_obj, y_obj):
-        """ Mueve la entidad al objetivo 
-            x_obj, y_obj: coordenadas del objetivo en m
-        """
-        # TODO no estoy seguro si es necesario calcular el ángulo yendo en 4-vecinos,
-        # aún así ajusta el ángulo en caso de que tuviera algo de fallo 
-        x, y, th = self.readOdometry()
-        angle = th - math.degrees(math.atan2(y_obj - y, x_obj - x))
-        print(f"Girando a {angle:.2f} grados")
-        self.waitAngle(angle)
-        print(f"Moviéndose a la posición ({x_obj}, {y_obj})")
-        if(self.detect_obstacle()):
-            print("Obstáculo detectado, replanificando ruta...")
-            self.replan_path(x, y, x_obj, y_obj)
-        self.waitPosition(x_obj, y_obj)
-        
-    def detect_obstacle(self):
-        """ Simulación de detección de obstáculos con ultrasonido """
-        # TODO: implementar
-        print("Leyendo ultrasonido...")
-        return False 
     
-    def replan_path(self, start_x, start_y, goal_x, goal_y):
-        """ Genera el camino y lo ejecuta """
+    def replan_path(self, start_x, start_y, obstacle_direction, goal_x, goal_y):
+        """ Genera el camino Devuelve true si hay camino """
+        self.setConnection(start_x, start_y, obstacle_direction)
         self.fill_cost_matrix(goal_x, goal_y)
-        path = self.find_path(start_x, start_y, goal_x, goal_y)
+        return self.find_path(start_x, start_y, goal_x, goal_y)
 
-        for (x, y) in path:
-            x *= self.sizeCell
-            y *= self.sizeCell  
-            
-            self.go_to(start_x, start_y, x, y)
-            start_x, start_y = x, y
-
-    def calibrateOdometry(self):
-        """ Calibra la odometría del robot """
-        # TODO: implementar
-        # comprobar con la distancia al obstáculo (estando en la misma celda)
-        # TODO: si ponemos el ultrasonidos hacia el lado se puede utilizar también
         

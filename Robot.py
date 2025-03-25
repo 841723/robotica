@@ -12,13 +12,17 @@ import brickpi3  # import the BrickPi3 drivers
 import cv2
 import numpy as np
 import picamera
+import math
 from lib.utils import deg_to_rad, norm_pi, rad_to_deg
 from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
+from lib.MapLib import Map2D
 from picamera.array import PiRGBArray
 
 
+
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, verbose=False):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, 
+                 map_filename=None, verbose=False):
         """
         Initialize basic robot params. 
 
@@ -61,6 +65,12 @@ class Robot:
         self.BP.offset_motor_encoder(self.PORT_MOTOR_IZQUIERDA,
            self.BP.get_motor_encoder(self.PORT_MOTOR_IZQUIERDA))
         
+        # Ultrasonic sensor P4
+        # TODO: actualizar con el puerto que sea
+        self.ultrasonic_sensor_port = self.BP.PORT_4
+        self.BP.set_sensor_type(self.ultrasonic_sensor_port, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM) 
+        # TODO: puede ser que sea self.BP.SENSOR_TYPE.NXT_ULTRASONIC
+        
 
         # configure camera
         self.camera = None
@@ -96,6 +106,10 @@ class Robot:
         # Camera resolution
         self.width = 320
         self.height = 240
+        
+        # Map parameters
+        self.map = Map2D(map_filename)
+        
 
         # Save into log file
         self.log_filename = None
@@ -520,6 +534,111 @@ class Robot:
                 self.setSpeed(0, 0)
 
         return
+    
+       
+    def definePositionValues(self, x, y, th):
+        """ Define la posición del robot """
+        self.lockOdometry.acquire()
+        self.x = x
+        self.y = y
+        self.th = th
+        self.lock_odometry.release()
+
+
+    def get_neighbor_from_angle(th):
+        """
+        Determines which neighbor the robot is looking at based on its angle.
+        :param th: Angle in radians (normalized to [-π, π])
+        :return: Neighbor number (0, 2, 4, or 6)
+        """
+        # Normalize the angle to [-π, π]
+        th = norm_pi(th)
+
+        # Define angle thresholds for each neighbor
+        if -np.pi/4 <= th < np.pi/4:  # Close to 0 radians
+            return 0  # Up
+        elif -3*np.pi/4 <= th < -np.pi/4:  # Close to -π/2 radians
+            return 2  # Right
+        elif th < -3*np.pi/4 or th >= 3*np.pi/4:  # Close to π radians
+            return 4  # Down
+        elif np.pi/4 <= th < 3*np.pi/4:  # Close to π/2 radians
+            return 6  # Left
+
+    def go_to(self, x_obj, y_obj):
+        """ Mueve la entidad al objetivo 
+            x_obj, y_obj: coordenadas del objetivo en m
+        """
+        # TODO no estoy seguro si es necesario calcular el ángulo yendo en 4-vecinos,
+        # aún así ajusta el ángulo en caso de que tuviera algo de fallo 
+        x, y, th = self.readOdometry()
+        angle = th - math.degrees(math.atan2(y_obj - y, x_obj - x))
+        print(f"Girando a {angle:.2f} grados")
+        self.waitAngle(angle)
+        print(f"Moviéndose a la posición ({x_obj}, {y_obj})")
+        if(self.detect_obstacle()):
+            print("Obstáculo detectado, calibramos odometría")
+            self.calibrateOdometry()
+            print("replanificando ruta...")
+            obstacle_direction = self.get_neighbor_from_angle(th)
+            return x, y, th, obstacle_direction
+            
+        self.waitPosition(x_obj, y_obj)
+        
+        # Para que calibre después de cada celda en caso de que encuentre un obstáculo
+        if(self.detect_obstacle()):
+            print("Obstáculo detectado, calibramos odometría")
+            self.calibrateOdometry()
+            
+        return x, y, th, None
+        
+        
+    def get_obstacle_distance(self):
+        """ Devuelve la distancia al obstáculo """
+        try:
+            distance = self.BP.get_sensor(self.ultrasonic_sensor_port)
+        except brickpi3.SensorError as error:
+            print(error)
+            distance = 100 # TODO si falla bastante hacer correción de errores mejor
+        return distance    
+        
+    def detect_obstacle(self):
+        """ Simulación de detección de obstáculos con ultrasonido """
+        obstacle_threshold = 30  # Umbral de distancia para considerar un obstáculo (en cm)
+        max_checks = 3
+        # Obtener lectura del sensor de ultrasonido
+        obstacle_distance = self.get_obstacle_distance()
+
+        # Verificar si la distancia al obstáculo está por debajo del umbral
+        while obstacle_distance < obstacle_threshold and max_checks > 0:
+            max_checks -= 1
+            time.sleep(self.P)
+            obstacle_distance = self.get_obstacle_distance()
+            # TODO: también podemos comprobar que todos los checks estén en el mismo rango y sino resetear el contador
+
+        if max_checks == 0:  # if the obstacle was detected many times
+            print("Obstáculo detectado a una distancia de", obstacle_distance, "cm")
+            return True
+    
+
+
+    def calibrateOdometry(self):
+        """ Calibra la odometría del robot """
+        # Comprueba con la distancia al obstáculo (estando en la misma celda)
+        # De momento sólo se llama cuando detecta un obstáculo aparte 
+        # TODO: si ponemos el ultrasonidos hacia el lado se puede utilizar también
+        distObj = 33 # TODO: calibrar número
+        distanceError = 5
+        distance = self.get_obstacle_distance()
+        while (abs(distObj - distance)) > distanceError:
+            # TODO: actualizar valores de odometría?
+            # TODO: renta más con wait position?
+            if (distObj - distance) > 0:
+                self.setSpeed(0.2,0)
+            else:
+                self.setSpeed(-0.2,0)
+            distance =self.get_obstacle_distance()
+        self.setSpeed(0,0)   
+        
 
     def __del__(self):
         # self.finished.value = True
