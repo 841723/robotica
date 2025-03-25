@@ -15,14 +15,12 @@ import picamera
 import math
 from lib.utils import deg_to_rad, norm_pi, rad_to_deg
 from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
-from lib.MapLib import Map2D
 from picamera.array import PiRGBArray
 
 
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, 
-                 map_filename=None, verbose=False):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, verbose=False):
         """
         Initialize basic robot params. 
 
@@ -67,7 +65,7 @@ class Robot:
         
         # Ultrasonic sensor P4
         # TODO: actualizar con el puerto que sea
-        self.ultrasonic_sensor_port = self.BP.PORT_4
+        self.ultrasonic_sensor_port = self.BP.PORT_1
         self.BP.set_sensor_type(self.ultrasonic_sensor_port, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM) 
         # TODO: puede ser que sea self.BP.SENSOR_TYPE.NXT_ULTRASONIC
         
@@ -106,10 +104,6 @@ class Robot:
         # Camera resolution
         self.width = 320
         self.height = 240
-        
-        # Map parameters
-        self.map = Map2D(map_filename)
-        
 
         # Save into log file
         self.log_filename = None
@@ -209,7 +203,7 @@ class Robot:
                     new_th = self.BP.get_sensor(self.PORT_GYRO)
                     # print("Gyro: ", new_th)
                     new_th = norm_pi(deg_to_rad(-new_th[0]))
-                    print("Gyro rads: ", new_th)
+                    # print("Gyro rads: ", new_th)
                 except brickpi3.SensorError as error:
                     if self.verbose:
                         print("Error reading gyro sensor: ", error)
@@ -538,10 +532,10 @@ class Robot:
        
     def definePositionValues(self, x, y, th):
         """ Define la posición del robot """
-        self.lockOdometry.acquire()
-        self.x = x
-        self.y = y
-        self.th = th
+        self.lock_odometry.acquire()
+        self.x = Value('d', x)
+        self.y = Value('d', y)
+        self.th = Value('d', th)
         self.lock_odometry.release()
 
 
@@ -564,17 +558,24 @@ class Robot:
         elif np.pi/4 <= th < 3*np.pi/4:  # Close to π/2 radians
             return 6  # Left
 
-    def go_to(self, x_obj, y_obj):
+    def go_to(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
         """ Mueve la entidad al objetivo 
             x_obj, y_obj: coordenadas del objetivo en m
         """
         # TODO no estoy seguro si es necesario calcular el ángulo yendo en 4-vecinos,
         # aún así ajusta el ángulo en caso de que tuviera algo de fallo 
         x, y, th = self.readOdometry()
-        angle = th - math.degrees(math.atan2(y_obj - y, x_obj - x))
-        print(f"Girando a {angle:.2f} grados")
+        angle = math.atan2(y_obj - y, x_obj - x) 
+        print("Inicio de GO_TO")
+        print("Xobj:", x_obj, "Yobj: ", y_obj)
+        print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
+        print("Girando a ", math.degrees(angle), "grados")
+        
+        self.setSpeed(0, w_base if angle >= 0 else -w_base)
         self.waitAngle(angle)
-        print(f"Moviéndose a la posición ({x_obj}, {y_obj})")
+        x, y, th = self.readOdometry()
+        print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
+        print("Moviéndose a la posición ", x_obj, ", ", y_obj)
         if(self.detect_obstacle()):
             print("Obstáculo detectado, calibramos odometría")
             self.calibrateOdometry()
@@ -582,7 +583,11 @@ class Robot:
             obstacle_direction = self.get_neighbor_from_angle(th)
             return x, y, th, obstacle_direction
             
-        self.waitPosition(x_obj, y_obj)
+        self.setSpeed(v_base, 0)
+        self.waitPosition(x_obj, y_obj, 0.2)
+        x, y, th = self.readOdometry()
+        print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
+        print()
         
         # Para que calibre después de cada celda en caso de que encuentre un obstáculo
         if(self.detect_obstacle()):
@@ -598,7 +603,7 @@ class Robot:
             distance = self.BP.get_sensor(self.ultrasonic_sensor_port)
         except brickpi3.SensorError as error:
             print(error)
-            distance = 100 # TODO si falla bastante hacer correción de errores mejor
+            distance = 1000 # TODO si falla bastante hacer correción de errores mejor
         return distance    
         
     def detect_obstacle(self):

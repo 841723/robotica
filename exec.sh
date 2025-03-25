@@ -4,7 +4,7 @@
 REMOTE_HOST="pi@10.1.31.230"
 REMOTE_DIR="/home/pi/robotica"  # Adjust this to your target directory
 LOCAL_DIR="."  # Current directory, adjust if needed
-FILE="p3_base.py"
+FILE="p4_base.py"
 # PLOT_FILE="plot.py"
 # LOG_FILE="log/test.log"
 
@@ -18,9 +18,13 @@ scp $LOCAL_DIR/*.sh $REMOTE_HOST:$REMOTE_DIR
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/lib"
 # Ensure the remote log directory exists
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/log"
+# Ensure the remote log directory exists
+ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/mapas"
 
 # Copy all files from lib directory to remote
 scp $LOCAL_DIR/lib/* $REMOTE_HOST:$REMOTE_DIR/lib
+# scp $LOCAL_DIR/mapas/* $REMOTE_HOST:$REMOTE_DIR/mapas
+
 
 # If copy was successful, execute the Python script
 # if [ $? -eq 0 ]; then

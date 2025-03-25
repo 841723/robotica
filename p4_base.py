@@ -12,7 +12,7 @@ matplotlib.use("TkAgg")
 # sudo apt-get install tcl-dev tk-dev python-tk python3-tk if TkAgg is not available
 
 # from Robot import Robot
-from github.robotica.lib.MapLib import Map2D
+from lib.MapLib import Map2D
 
 # NOTES ABOUT TASKS to DO in P4:
 # 1)findPath(x1,y1, x2,y2),   fillCostMatrix(), replanPath () --> should be methods from the new Map2D class
@@ -31,74 +31,47 @@ def main(args):
             exit(1)
 
         map_file = args.mapfile
-        # Instantiate Odometry with your own files from P2/P3
-        # robot = Robot()
-        # ...
-
         # 1. load map and compute costs and path
         myMap = Map2D(map_file)
-        #myMap.verbose = True
+        myMap.verbose = True
 
-        x_ini, y_ini = 1, 1 
-        x_end, y_end = 4, 4
+
+        x_ini, y_ini = 0,0
+        x_end, y_end = 2,2
+        
         myMap.planPath(x_ini, y_ini, x_end, y_end)
-        
+        print(myMap.currentPath)
         myMap.drawMap(saveSnapshot=False)
-
-        # you can set verbose to False to stop displaying plots interactively
-        # (and maybe just save the snapshots of the map)
-        # myMap.verbose = False
-
-        # # sample commands to see how to draw the map
-        # sampleRobotLocations = [ [0,0,0], [600, 600, 3.14] ]
-        # # this will save a .png with the current map visualization,
-        # # all robot positions, last one in green
-        # #myMap.verbose = True
-        # myMap.drawMapWithRobotLocations( sampleRobotLocations, saveSnapshot=False )
-
-        # # this shows the current, and empty, map and an additionally closed connection
-        # myMap.deleteConnection(0,0,0)
-        # #myMap.verbose = True
-        # myMap.drawMap(saveSnapshot=False)
-
-        # this will open a window with the results, but does not work well remotely
-        #myMap.verbose = True
-        # sampleRobotLocations = [ [200, 200, 3.14/2.0], [200, 600, 3.14/4.0], [200, 1000, -3.14/2.0],  ]
-        # myMap.drawMapWithRobotLocations( sampleRobotLocations, saveSnapshot=False )
-
-        # matplotlib.pyplot.close('all')
-        # 2. launch updateOdometry thread()
-        # robot.startOdometry()
-        # ...
         
-        # Initialize Odometry. Default value will be 0,0,0
+        # Initialize Odometry. 
         robot = Robot(log_filename=args.log, verbose=args.verbose)
-
-        # 1. launch updateOdometry thread()
+        x_ini_meter = x_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000
+        y_ini_meter = y_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000
+        robot.definePositionValues(x_ini_meter, y_ini_meter, 0)
         robot.startOdometry()
-
+            
         # 3. perform trajectory
-        
-        # while (notfinished){
+        robotLocations = [ [x_ini_meter, y_ini_meter, 0] ]
 
-            # robot.go(pathX[i],pathY[i]);
-            # check if there are close obstacles
-            # deal with them...
-            # Avoid_obstacle(...) OR RePlanPath(...)
-        robotLocations = [ [x_ini, y_ini, 0] ]
+        i = 0
+        while i < len(myMap.currentPath):
+            x, y = myMap.currentPath[i]
 
-        for (x, y) in myMap.currentPath:
-
-            x *= myMap.sizeCell
-            y *= myMap.sizeCell
+            x *= myMap.sizeCell/1000
+            y *= myMap.sizeCell/1000
+            x += myMap.sizeCell/2000
+            y += myMap.sizeCell/2000
             
             x_act, y_act, th_act, direction = robot.go_to(x, y)
-            robotLocations.append([x_act, y_act, th_act])
-            
-            if(direction != None):
-                # había un obstáculo
+            robotLocations.append([x_act*1000, y_act*1000, th_act])
+
+            if direction is not None:
+                # Obstacle detected, replan the path
+                print("Obstacle detected at ", x_act, y_act, ", replanning path")
                 myMap.replan_path(x_act, y_act, direction, x_end, y_end)
-                continue # TODO: el bucle funciona bien haciéndolo así o hace falta while
+                i = 0  # Restart from the beginning of the new path
+                continue
+            i += 1
             
         myMap.drawMapWithRobotLocations(robotLocations, saveSnapshot=False)
 
@@ -125,7 +98,7 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mapfile", help="path to find map file",
-                        default="mapa1.txt")
+                        default="./mapas/mapa1.txt")
     parser.add_argument("-l", "--log", help="Log file",
                 type=str, default="default.log") 
     parser.add_argument("-v", "--verbose", help="increase output verbosity",

@@ -413,7 +413,7 @@ class Map2D:
         """
         self._initCostMatrix()
         
-        self.cost_matrix[goal_x][goal_y] = 0
+        self.costMatrix[goal_x][goal_y] = 0
         wavefront = [(goal_x, goal_y)]
         step = 1
 
@@ -422,8 +422,10 @@ class Map2D:
             for x, y in wavefront:
                 for dx, dy in self.neighbours:
                     nx, ny = x + dx, y + dy
-                    if self.cost_matrix[nx][ny] > step and self.is_connected(x, y, dx, dy):
-                        self.cost_matrix[nx][ny] = step
+                    if self._isInsideMatrix(nx, ny) and (self.costMatrix[nx][ny] > step or self.costMatrix[nx][ny] == -2) \
+                        and self.isConnected(x, y, self.neighbours.index((dx, dy)) * 2):
+                        
+                        self.costMatrix[nx][ny] = step
                         new_wave.append((nx, ny))
             wavefront = new_wave
             step += 1
@@ -438,6 +440,8 @@ class Map2D:
         Returns True if a path was found, False otherwise.
         The path is stored in the currentPath variable.
         """    
+        self.fillCostMatrix(x_end, y_end)
+        
         pathFound = True
         
         self.currentPath = [(x_ini, y_ini)]
@@ -449,8 +453,9 @@ class Map2D:
 
             for dx, dy in self.neighbours: # defined as [(0, 1), (1, 0), (0, -1), (-1, 0)]
                 nx, ny = x + dx, y + dy
-                if self._isInsideMatrix(nx, ny) and self.cost_matrix[nx][ny] < min_val and self.is_connected(x, y, dx, dy):
-                    min_val = self.cost_matrix[nx][ny]
+                if self._isInsideMatrix(nx, ny) and self.costMatrix[nx][ny] < min_val \
+                    and self.isConnected(x, y, self.neighbours.index((dx, dy)) * 2):
+                    min_val = self.costMatrix[nx][ny]
                     next_pos = (nx, ny)
 
             if next_pos:
