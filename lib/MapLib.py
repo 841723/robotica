@@ -435,7 +435,7 @@ class Map2D:
     def planPath(self, x_ini,  y_ini, x_end, y_end):
         """
         x_ini, y_ini, x_end, y_end: integer values that indicate \
-            the x and y coordinates of the starting (ini) and ending (end) cell
+            the x and y coordinates of the starting (ini) and ending (end) cell (starting on 0)
 
         Returns True if a path was found, False otherwise.
         The path is stored in the currentPath variable.
@@ -444,7 +444,7 @@ class Map2D:
         
         pathFound = True
         
-        self.currentPath = [(x_ini, y_ini)]
+        self.currentPath = []
         x, y = x_ini, y_ini
 
         while (x, y) != (x_end, y_end):

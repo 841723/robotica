@@ -35,26 +35,27 @@ def main(args):
         myMap = Map2D(map_file)
         myMap.verbose = True
 
-
-        x_ini, y_ini = 0,0
-        x_end, y_end = 2,2
+        x_ini, y_ini, th_ini = 0,0, 0
+        x_end, y_end = 2,0
         
         myMap.planPath(x_ini, y_ini, x_end, y_end)
         print(myMap.currentPath)
-        myMap.drawMap(saveSnapshot=False)
+        # myMap.drawMap(saveSnapshot=False)
         
         # Initialize Odometry. 
         robot = Robot(log_filename=args.log, verbose=args.verbose)
-        x_ini_meter = x_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000
+        x_ini_meter = x_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000 # El número de baldosas y se añade la media baldosa inicial
         y_ini_meter = y_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000
-        robot.definePositionValues(x_ini_meter, y_ini_meter, 0)
+        robot.definePositionValues(x_ini_meter, y_ini_meter, th_ini)
         robot.startOdometry()
             
         # 3. perform trajectory
-        robotLocations = [ [x_ini_meter, y_ini_meter, 0] ]
+        robotLocations = [ [x_ini_meter*1000, y_ini_meter*1000, 0] ] # The locations for the map have to be in mm
+
 
         i = 0
         while i < len(myMap.currentPath):
+            print("Going to ", myMap.currentPath[i])
             x, y = myMap.currentPath[i]
 
             x *= myMap.sizeCell/1000
@@ -72,8 +73,6 @@ def main(args):
                 i = 0  # Restart from the beginning of the new path
                 continue
             i += 1
-            
-        myMap.drawMapWithRobotLocations(robotLocations, saveSnapshot=False)
 
         # 4. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
@@ -81,6 +80,9 @@ def main(args):
         robot.setSpeed(0, 0)
         time.sleep(2) 
         robot.stopOdometry()
+        
+        myMap.drawMapWithRobotLocations(robotLocations, saveSnapshot=False)
+
 
     except KeyboardInterrupt:
     # except the program gets interrupted by Ctrl+C on the keyboard.

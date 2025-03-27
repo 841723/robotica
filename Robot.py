@@ -167,14 +167,34 @@ class Robot:
         self.lock_odometry.release()
         return x, y, th
 
+    def initializeSensors(self, timeout=10):
+        """Inicializa los sensores del robot
+        """
+        sensor_error = True
+        start_time = time.time()
+        while sensor_error:
+            try:
+                self.BP.get_sensor(self.PORT_GYRO)
+                self.BP.get_sensor(self.ultrasonic_sensor_port)
+                sensor_error = False
+                print("Sensores inicializados correctamente")
+            except brickpi3.SensorError as error:
+                if self.verbose:
+                    print("Error initializing sensors: ", error)
+                if time.time() - start_time > timeout:
+                    raise RuntimeError("Sensor initialization timed out")
+                time.sleep(0.2)
+
     def startOdometry(self):
         """This starts a new process/thread that will be updating the odometry periodically 
         """
-        self.finished.value = False
+        self.finished.value = False   
+        self.initializeSensors()      
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
         print("PID: ", self.p.pid)
         time.sleep(2)   
+        
 
     def updateOdometry(self): 
         """This function will be run periodically to update the odometry values
@@ -322,11 +342,11 @@ class Robot:
             if t_siguiente > t_actual:
                 time.sleep(t_siguiente - time.time())
             
-            [x_actual, y_actual, _] = self.readOdometry()
+            [x_actual, y_actual, th_actual] = self.readOdometry()
             diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
             
             if self.verbose:
-                print("Posición actual:", x_actual, y_actual, "Error:", diferencia_posicion)
+                print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion)
             
             if diferencia_posicion > diferencia_posicion_anterior:
                 error_count += 1
@@ -571,8 +591,14 @@ class Robot:
         print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
         print("Girando a ", math.degrees(angle), "grados")
         
-        self.setSpeed(0, w_base if angle >= 0 else -w_base)
+        # Calcular la diferencia angular
+        angle_diff = norm_pi(angle - th)
+
+        # Determinar la dirección del giro
+        self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
+        
         self.waitAngle(angle)
+        self.setSpeed(0,0)
         x, y, th = self.readOdometry()
         print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
         print("Moviéndose a la posición ", x_obj, ", ", y_obj)
@@ -584,7 +610,8 @@ class Robot:
             return x, y, th, obstacle_direction
             
         self.setSpeed(v_base, 0)
-        self.waitPosition(x_obj, y_obj, 0.2)
+        self.waitPosition(x_obj, y_obj)
+        self.setSpeed(0,0)
         x, y, th = self.readOdometry()
         print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
         print()
@@ -598,7 +625,7 @@ class Robot:
         
         
     def get_obstacle_distance(self):
-        """ Devuelve la distancia al obstáculo """
+        """ Devuelve la distancia al obstáculo en cm """
         try:
             distance = self.BP.get_sensor(self.ultrasonic_sensor_port)
         except brickpi3.SensorError as error:
@@ -608,13 +635,15 @@ class Robot:
         
     def detect_obstacle(self):
         """ Simulación de detección de obstáculos con ultrasonido """
-        obstacle_threshold = 30  # Umbral de distancia para considerar un obstáculo (en cm)
+        obstacle_threshold = 20  # Umbral de distancia para considerar un obstáculo (en cm)
+        # Es un poco mayor que lo que debe llegar porque se ejecuta cuando acaba de rotar antes de partir a una nueva posición
         max_checks = 3
         # Obtener lectura del sensor de ultrasonido
         obstacle_distance = self.get_obstacle_distance()
-
+        print("Distancia al obstáculo: ", obstacle_distance)
         # Verificar si la distancia al obstáculo está por debajo del umbral
         while obstacle_distance < obstacle_threshold and max_checks > 0:
+            print("check ", max_checks, "distancia: ", obstacle_distance)
             max_checks -= 1
             time.sleep(self.P)
             obstacle_distance = self.get_obstacle_distance()
@@ -631,17 +660,21 @@ class Robot:
         # Comprueba con la distancia al obstáculo (estando en la misma celda)
         # De momento sólo se llama cuando detecta un obstáculo aparte 
         # TODO: si ponemos el ultrasonidos hacia el lado se puede utilizar también
-        distObj = 33 # TODO: calibrar número
-        distanceError = 5
+        distObj = 13 
+        distanceError = 1
         distance = self.get_obstacle_distance()
+        
         while (abs(distObj - distance)) > distanceError:
-            # TODO: actualizar valores de odometría?
-            # TODO: renta más con wait position?
+            # print("Distancia al objeto: ", distance)
+            # print("Distancia al objeto deseada: ", distObj)
+            # print(abs(distObj - distance))
+            # print(distObj- distance)
             if (distObj - distance) > 0:
-                self.setSpeed(0.2,0)
+                self.setSpeed(-0.1,0)
             else:
-                self.setSpeed(-0.2,0)
+                self.setSpeed(0.1,0)
             distance =self.get_obstacle_distance()
+        print("Distancia final al objeto: ", distance)
         self.setSpeed(0,0)   
         
 
