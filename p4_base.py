@@ -57,9 +57,8 @@ def main(args):
         while i < len(myMap.currentPath):
             print("-------------------------------------------------------------------------")
             print("Going to ", myMap.currentPath[i])
-            x_coord, y_coord = myMap.currentPath[i]
-            
-            x, y = x_coord, y_coord
+
+            x, y = myMap.currentPath[i]
             x *= myMap.sizeCell/1000
             y *= myMap.sizeCell/1000
             x += myMap.sizeCell/2000
@@ -72,7 +71,10 @@ def main(args):
                 # Obstacle detected, replan the path
                 print("Obstacle detected at ", x_act, y_act, ", replanning path")
                 print("Direction of the obstacle: ", direction)
-                myMap.replan_path(x_coord, y_coord, direction, x_end, y_end)
+                
+                x_prev, y_prev = myMap.currentPath[i-1]
+                print("Current cell: ", x_prev, y_prev)
+                myMap.replan_path(x_prev, y_prev, direction, x_end, y_end)
                 i = 0  # Restart from the beginning of the new path
                 continue
             i += 1

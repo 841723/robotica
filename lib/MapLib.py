@@ -471,9 +471,7 @@ class Map2D:
         self.deleteConnection(start_x, start_y, obstacle_direction)
         self.fillCostMatrix(goal_x, goal_y)
         
-        self.findPath([start_x, start_y], [goal_x, goal_y])
-        self.drawMap()
-        time.sleep(20)
-        return 
+        return self.findPath([start_x, start_y], [goal_x, goal_y])
+
 
         
