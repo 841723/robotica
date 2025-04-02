@@ -468,8 +468,12 @@ class Map2D:
     
     def replan_path(self, start_x, start_y, obstacle_direction, goal_x, goal_y):
         """ Genera el camino Devuelve true si hay camino """
-        self.setConnection(start_x, start_y, obstacle_direction)
-        self.fill_cost_matrix(goal_x, goal_y)
-        return self.find_path(start_x, start_y, goal_x, goal_y)
+        self.deleteConnection(start_x, start_y, obstacle_direction)
+        self.fillCostMatrix(goal_x, goal_y)
+        
+        self.findPath([start_x, start_y], [goal_x, goal_y])
+        self.drawMap()
+        time.sleep(20)
+        return 
 
         

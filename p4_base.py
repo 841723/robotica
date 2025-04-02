@@ -35,8 +35,8 @@ def main(args):
         myMap = Map2D(map_file)
         myMap.verbose = True
 
-        x_ini, y_ini, th_ini = 0,0, 0
-        x_end, y_end = 2,0
+        x_ini, y_ini, th_ini = 0, 0, 0
+        x_end, y_end = 6,0
         
         myMap.planPath(x_ini, y_ini, x_end, y_end)
         print(myMap.currentPath)
@@ -55,9 +55,11 @@ def main(args):
 
         i = 0
         while i < len(myMap.currentPath):
+            print("-------------------------------------------------------------------------")
             print("Going to ", myMap.currentPath[i])
-            x, y = myMap.currentPath[i]
-
+            x_coord, y_coord = myMap.currentPath[i]
+            
+            x, y = x_coord, y_coord
             x *= myMap.sizeCell/1000
             y *= myMap.sizeCell/1000
             x += myMap.sizeCell/2000
@@ -69,10 +71,13 @@ def main(args):
             if direction is not None:
                 # Obstacle detected, replan the path
                 print("Obstacle detected at ", x_act, y_act, ", replanning path")
-                myMap.replan_path(x_act, y_act, direction, x_end, y_end)
+                print("Direction of the obstacle: ", direction)
+                myMap.replan_path(x_coord, y_coord, direction, x_end, y_end)
                 i = 0  # Restart from the beginning of the new path
                 continue
             i += 1
+            print("Current location: ", robot.readOdometry())
+            print("----------------------------------------")
 
         # 4. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
@@ -100,10 +105,10 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mapfile", help="path to find map file",
-                        default="./mapas/mapa1.txt")
+                        default="./mapas/mapa2.txt")
     parser.add_argument("-l", "--log", help="Log file",
                 type=str, default="default.log") 
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                    action="store_true", default=False)
+                    action="store_true", default=True)
     args = parser.parse_args()
     main(args)

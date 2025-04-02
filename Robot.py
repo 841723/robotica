@@ -20,7 +20,7 @@ from picamera.array import PiRGBArray
 
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, verbose=False):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], log_filename=None, verbose=True):
         """
         Initialize basic robot params. 
 
@@ -216,6 +216,9 @@ class Robot:
 
                 v = self.R/2 * (wDerecha + wIzquierda)
                 w = self.R/self.L * (wDerecha - wIzquierda)
+                
+                if w < 0.3 and w > -0.3:
+                    w = 0
 
                 x_read, y_read, th_read = self.readOdometry()
                 dx, dy, new_th = 0, 0, 0
@@ -229,7 +232,6 @@ class Robot:
                         print("Error reading gyro sensor: ", error)
                     new_th = th_read + w*self.P
                 
-
                 if w == 0:
                     dx = self.P*v*np.cos(th_read)
                     dy = self.P*v*np.sin(th_read)
@@ -241,6 +243,7 @@ class Robot:
                 self.x.value = x_read + dx
                 self.y.value = y_read + dy
                 self.th.value = th_read + w*self.P
+                # self.th.value = new_th
                 self.v.value = v
                 self.w.value = w
                 self.lock_odometry.release()
@@ -316,8 +319,51 @@ class Robot:
             print("Error: ", distancia_a_final)
             
         
-    def waitPosition(self, x_deseado, y_deseado, tolerancia=0.03):
+    def waitPosition(self, x_deseado, y_deseado, tolerancia=0.022):
         """Waits until the robot reaches a specific position with a given tolerance
+        :param x_deseado: desired x position
+        :param y_deseado: desired y position
+        :param tolerancia: tolerance in meters
+        """
+
+        time.sleep(self.P)
+        
+        t_siguiente = time.time()
+        [x_actual, y_actual, _] = self.readOdometry()
+        
+        diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+        if self.verbose:
+            print("Posición inicial:", x_actual, y_actual)
+            print("Esperando hasta alcanzar:", x_deseado, y_deseado)
+            print("Error:", diferencia_posicion)
+        error_count = 0
+
+        while diferencia_posicion > tolerancia:
+            diferencia_posicion_anterior = diferencia_posicion
+            t_siguiente += self.P
+            t_actual = time.time()
+            if t_siguiente > t_actual:
+                time.sleep(t_siguiente - time.time())
+            
+            [x_actual, y_actual, th_actual] = self.readOdometry()
+            diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+            
+            if self.verbose:
+                print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion)
+            
+            if diferencia_posicion > diferencia_posicion_anterior:
+                error_count += 1
+                if error_count > 0:
+                    # If we are moving away from the desired position, we stop
+                    print("Error aumentando", diferencia_posicion, "; es mayor que", diferencia_posicion_anterior)
+                    break
+                
+        if self.verbose:
+            print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
+            print("Error:", diferencia_posicion)
+
+    def waitPositionWithCorrection(self, x_deseado, y_deseado, tolerancia=0.03):
+        """Waits until the robot reaches a specific position with a given tolerance and corrects the position
         :param x_deseado: desired x position
         :param y_deseado: desired y position
         :param tolerancia: tolerance in meters
@@ -358,7 +404,7 @@ class Robot:
         if self.verbose:
             print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
             print("Error:", diferencia_posicion)
-
+    
     def catch(self):
         """Lowers the basket to catch the ball
         """
@@ -559,7 +605,7 @@ class Robot:
         self.lock_odometry.release()
 
 
-    def get_neighbor_from_angle(th):
+    def get_neighbor_from_angle(self, th):
         """
         Determines which neighbor the robot is looking at based on its angle.
         :param th: Angle in radians (normalized to [-π, π])
@@ -569,14 +615,14 @@ class Robot:
         th = norm_pi(th)
 
         # Define angle thresholds for each neighbor
-        if -np.pi/4 <= th < np.pi/4:  # Close to 0 radians
+        if np.pi/4 <= th < 3*np.pi/4:  # Close to π/2 radians
             return 0  # Up
         elif -3*np.pi/4 <= th < -np.pi/4:  # Close to -π/2 radians
-            return 2  # Right
-        elif th < -3*np.pi/4 or th >= 3*np.pi/4:  # Close to π radians
             return 4  # Down
-        elif np.pi/4 <= th < 3*np.pi/4:  # Close to π/2 radians
+        elif th < -3*np.pi/4 or th >= 3*np.pi/4:  # Close to π radians
             return 6  # Left
+        elif -np.pi/4 <= th < np.pi/4:  # Close to 0 radians 
+            return 2  # Right
 
     def go_to(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
         """ Mueve la entidad al objetivo 
@@ -674,7 +720,7 @@ class Robot:
             else:
                 self.setSpeed(0.1,0)
             distance =self.get_obstacle_distance()
-        print("Distancia final al objeto: ", distance)
+        # print("Distancia final al objeto: ", distance)
         self.setSpeed(0,0)   
         
 
