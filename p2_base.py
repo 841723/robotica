@@ -262,7 +262,7 @@ def main(args):
         # testcase = 1 # 2 esferas
         # testcase = 2 # otro
         testcase = args.testcase
-        testcase = 0
+        testcase = 2
         # 1. launch updateOdometry Process()
         robot.startOdometry()
         if testcase == 0:

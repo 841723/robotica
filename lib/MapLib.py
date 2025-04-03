@@ -34,8 +34,6 @@ class Map2D:
         self.mapLineStyle='r-'
         self.costValueStyle='g*'
         self.verbose = True
-        # set to False to stop displaying plots interactively (and maybe just save the screenshots)
-        # self.verbose = False
         self.current_ax = None
 
         # variables about map params
@@ -47,6 +45,7 @@ class Map2D:
         self.costMatrix =  None
         self.currentPath =  None
         
+        # north, east, south, west 
         self.neighbours = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
         if self._loadMap(map_description_file):
@@ -348,7 +347,6 @@ class Map2D:
         if saveSnapshot: saves a figure as mapstatus_currenttimestamp_FIGNUM.png
         """
         self.verbose=True
-        #self.verbose=False
 
         # create a new figure and set it as current axis
         current_fig = plt.figure()
@@ -447,14 +445,14 @@ class Map2D:
         self.currentPath = []
         x, y = x_ini, y_ini
 
-        while (x, y) != (x_end, y_end):
+        while (x, y) != (x_end, y_end) and pathFound:
             min_val = float('inf')
             next_pos = None
 
             for dx, dy in self.neighbours: # defined as [(0, 1), (1, 0), (0, -1), (-1, 0)]
                 nx, ny = x + dx, y + dy
                 if self._isInsideMatrix(nx, ny) and self.costMatrix[nx][ny] < min_val \
-                    and self.isConnected(x, y, self.neighbours.index((dx, dy)) * 2):
+                    and self.isConnected(x, y, self.neighbours.index((dx, dy)) * 2) and self.costMatrix[nx][ny] != -2:
                     min_val = self.costMatrix[nx][ny]
                     next_pos = (nx, ny)
 
@@ -469,8 +467,6 @@ class Map2D:
     def replan_path(self, start_x, start_y, obstacle_direction, goal_x, goal_y):
         """ Genera el camino Devuelve true si hay camino """
         self.deleteConnection(start_x, start_y, obstacle_direction)
-        self.fillCostMatrix(goal_x, goal_y)
-        
         return self.findPath([start_x, start_y], [goal_x, goal_y])
 
 

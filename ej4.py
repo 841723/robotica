@@ -110,7 +110,7 @@ def seguimiento_pared(robot=np.array([c2m(4),c2m(3.8), np.deg2rad(70)]), objetiv
     w_max = np.pi
     dD = 0.0
     wXr = robot
-    wXo = objetivo
+    wXo = objetivo  
     # rWo = np.dot(inv(hom(robot)),hom(objetivo))
     if pared == 'izquierda':
         d = sensor_izq(wXr, sitio_pared)

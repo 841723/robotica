@@ -35,8 +35,9 @@ def main(args):
         myMap = Map2D(map_file)
         myMap.verbose = True
 
+        # Initial position in cells (0,0) and orientation 90 degrees
         x_ini, y_ini, th_ini = 0, 0, 0
-        x_end, y_end = 6,0
+        x_end, y_end = 2,2
         
         myMap.planPath(x_ini, y_ini, x_end, y_end)
         print(myMap.currentPath)
@@ -44,16 +45,17 @@ def main(args):
         
         # Initialize Odometry. 
         robot = Robot(log_filename=args.log, verbose=args.verbose)
-        x_ini_meter = x_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000 # El número de baldosas y se añade la media baldosa inicial
+        x_ini_meter = x_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000 
         y_ini_meter = y_ini * myMap.sizeCell/1000 + myMap.sizeCell/2000
         robot.definePositionValues(x_ini_meter, y_ini_meter, th_ini)
         robot.startOdometry()
             
-        # 3. perform trajectory
-        robotLocations = [ [x_ini_meter*1000, y_ini_meter*1000, 0] ] # The locations for the map have to be in mm
+        # 3. perform trajectory in mm
+        robotLocations = [ [x_ini_meter*1000, y_ini_meter*1000, 0] ]
 
 
         i = 0
+        path_found = True
         while i < len(myMap.currentPath):
             print("-------------------------------------------------------------------------")
             print("Going to ", myMap.currentPath[i])
@@ -69,14 +71,29 @@ def main(args):
 
             if direction is not None:
                 # Obstacle detected, replan the path
-                print("Obstacle detected at ", x_act, y_act, ", replanning path")
-                print("Direction of the obstacle: ", direction)
+                if args.verbose:
+                    print("Obstacle detected at ", x_act, y_act, ", replanning path")
+                    print("Direction of the obstacle: ", direction)
                 
                 x_prev, y_prev = myMap.currentPath[i-1]
-                print("Current cell: ", x_prev, y_prev)
-                myMap.replan_path(x_prev, y_prev, direction, x_end, y_end)
-                i = 0  # Restart from the beginning of the new path
-                continue
+                if args.verbose:
+                    print("Current cell: ", x_prev, y_prev)
+                try:
+                    path_found = myMap.replan_path(x_prev, y_prev, direction, x_end, y_end)
+                except Exception as e:
+                    print("Error during path replanning: ", e)
+                if path_found:
+                    i = 0  # Restart from the beginning of the new path
+                    print("Path found")
+                    continue
+                else:
+                    print("No path found, rebooting map")
+                    myMap = Map2D(map_file)
+                    myMap.replan_path(x_prev, y_prev, direction, x_end, y_end)
+                    i=0
+                    continue
+                    
+                
             i += 1
             print("Current location: ", robot.readOdometry())
             print("----------------------------------------")
@@ -107,7 +124,7 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mapfile", help="path to find map file",
-                        default="./mapas/mapa2.txt")
+                        default="./mapas/mapa0.txt")
     parser.add_argument("-l", "--log", help="Log file",
                 type=str, default="default.log") 
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
