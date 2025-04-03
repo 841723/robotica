@@ -392,7 +392,6 @@ class Robot:
         :param tolerancia: tolerance in meters
         """
         d_min = 0.20
-        tolerancia_lado = 1
         
         time.sleep(self.P)
         
