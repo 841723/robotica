@@ -67,6 +67,8 @@ class Robot:
         # TODO: actualizar con el puerto que sea
         self.ultrasonic_sensor_port = self.BP.PORT_1
         self.BP.set_sensor_type(self.ultrasonic_sensor_port, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM) 
+        self.SENSOR_LADO_DERECHO = self.BP.PORT_2
+        self.BP.set_sensor_type(self.SENSOR_LADO_DERECHO, self.BP.SENSOR_TYPE.NXT_ULTRASONIC_CM)
         # TODO: puede ser que sea self.BP.SENSOR_TYPE.NXT_ULTRASONIC
         
 
@@ -86,6 +88,8 @@ class Robot:
         self.anguloDerecha = Value('d',0.0)
         self.anguloIzquierda = Value('d',0.0)
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
+        self.sideDistance = Value('d',0.0) # distance to the wall on the right side of the robot
+        self.positionSideChecking = Value('s',"")
         self.rawCapture = None
 
         # If we want to block several instructions to be run together, we may want to use an explicit Lock
@@ -176,6 +180,7 @@ class Robot:
             try:
                 self.BP.get_sensor(self.PORT_GYRO)
                 self.BP.get_sensor(self.ultrasonic_sensor_port)
+                self.BP.get_sensor(self.SENSOR_LADO_DERECHO)
                 sensor_error = False
                 print("Sensores inicializados correctamente")
             except brickpi3.SensorError as error:
@@ -185,16 +190,17 @@ class Robot:
                     raise RuntimeError("Sensor initialization timed out")
                 time.sleep(0.2)
 
-    def startOdometry(self):
+    def startOdometry(self, sideChecking=""):
         """This starts a new process/thread that will be updating the odometry periodically 
         """
-        self.finished.value = False   
-        self.initializeSensors()      
+        self.finished.value = False
+        self.initializeSensors()
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
+        # self.positionSideChecking.value = sideChecking
         print("PID: ", self.p.pid)
-        time.sleep(2)   
-        
+        time.sleep(2)      
+
 
     def updateOdometry(self): 
         """This function will be run periodically to update the odometry values
@@ -238,6 +244,10 @@ class Robot:
                 else:
                     dx = v/w*(np.sin(th_read + w*self.P) - np.sin(th_read))
                     dy = -v/w*(np.cos(th_read + w*self.P) - np.cos(th_read))
+
+                """
+                                
+                """
                 
                 self.lock_odometry.acquire()
                 self.x.value = x_read + dx
@@ -625,24 +635,24 @@ class Robot:
             return 2  # Right
 
     def go_to(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
-        """ Mueve la entidad al objetivo 
+        """ Mueve la entidad al objetivo
             x_obj, y_obj: coordenadas del objetivo en m
         """
         # TODO no estoy seguro si es necesario calcular el ángulo yendo en 4-vecinos,
-        # aún así ajusta el ángulo en caso de que tuviera algo de fallo 
+        # aún así ajusta el ángulo en caso de que tuviera algo de fallo
         x, y, th = self.readOdometry()
-        angle = math.atan2(y_obj - y, x_obj - x) 
+        angle = math.atan2(y_obj - y, x_obj - x)
         print("Inicio de GO_TO")
         print("Xobj:", x_obj, "Yobj: ", y_obj)
         print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
         print("Girando a ", math.degrees(angle), "grados")
-        
+
         # Calcular la diferencia angular
         angle_diff = norm_pi(angle - th)
 
         # Determinar la dirección del giro
         self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
-        
+
         self.waitAngle(angle)
         self.setSpeed(0,0)
         x, y, th = self.readOdometry()
@@ -654,22 +664,22 @@ class Robot:
             print("replanificando ruta...")
             obstacle_direction = self.get_neighbor_from_angle(th)
             return x, y, th, obstacle_direction
-            
+
         self.setSpeed(v_base, 0)
         self.waitPosition(x_obj, y_obj)
         self.setSpeed(0,0)
         x, y, th = self.readOdometry()
         print("X {:.5f} y {:.5f} Ángulo {:.5f} rad {:.5f}".format(x, y, math.degrees(th), th))
         print()
-        
+
         # Para que calibre después de cada celda en caso de que encuentre un obstáculo
         if(self.detect_obstacle()):
             print("Obstáculo detectado, calibramos odometría")
             self.calibrateOdometry()
-            
+
         return x, y, th, None
-        
-        
+
+
     def get_obstacle_distance(self):
         """ Devuelve la distancia al obstáculo en cm """
         try:
@@ -677,8 +687,17 @@ class Robot:
         except brickpi3.SensorError as error:
             print(error)
             distance = 1000 # TODO si falla bastante hacer correción de errores mejor
-        return distance    
-        
+        return distance
+
+
+    def get_side_obstacle_distance(self):
+        """ Devuelve la distancia al obstáculo en cm """
+        try:
+            distance = self.BP.get_sensor(self.SENSOR_LADO_DERECHO)
+        except brickpi3.SensorError as error:
+            print(error)
+            distance = 1000
+
     def detect_obstacle(self):
         """ Simulación de detección de obstáculos con ultrasonido """
         obstacle_threshold = 20  # Umbral de distancia para considerar un obstáculo (en cm)
@@ -698,6 +717,25 @@ class Robot:
         if max_checks == 0:  # if the obstacle was detected many times
             print("Obstáculo detectado a una distancia de", obstacle_distance, "cm")
             return True
+        
+    def detect_side_obstacle(self):
+        """ Simulación de detección de obstáculos con ultrasonido """
+        obstacle_threshold = 10
+        max_checks = 2
+        # Obtener lectura del sensor de ultrasonido
+        obstacle_distance = self.get_side_obstacle_distance()
+        print("Distancia al obstáculo derecho: ", obstacle_distance)
+        while obstacle_distance < obstacle_threshold and max_checks > 0:
+            print("check ", max_checks, "distancia: ", obstacle_distance)
+            max_checks -= 1
+            time.sleep(self.P)
+            obstacle_distance = self.get_side_obstacle_distance()
+        
+        if max_checks == 0:
+            print("Obstáculo detectado a una distancia de", obstacle_distance, "cm")
+            return True 
+        
+        
     
 
 
@@ -726,8 +764,8 @@ class Robot:
 
     def __del__(self):
         # self.finished.value = True
-        if self.verbose:
-            print("Robot object deleted")
+        # if self.verbose:
+        #     print("Robot object deleted")
         self.setSpeed(0,0)
         self.BP.reset_all()
 
