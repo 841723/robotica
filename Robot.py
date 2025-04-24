@@ -823,31 +823,28 @@ class Robot:
     def doS(self, currentMap):
         assert currentMap == 'A' or currentMap == 'B', "Mapa no válido"
 
-        steps = []
-        sideDistance = 0.2
+        w_base = np.pi/4
+        v_base = 0.2
 
         if currentMap == 'A':
-            steps = [
-                [-np.pi/2, c2m(1-sideDistance), c2m(5.5)],
-                [-np.pi/4, c2m(1.5), c2m(4.5)],
-                [-np.pi/2, c2m(2+sideDistance), c2m(3.5)],
-                [-np.pi/2, c2m(1.5), c2m(2.5)],
-            ]
-        elif currentMap == 'B':
-            steps = [
-                [-np.pi/2, c2m(6+sideDistance), c2m(5.5)],
-                [-np.pi/4, c2m(5.5), c2m(4.5)],
-                [-np.pi/2, c2m(5-sideDistance), c2m(3.5)],
-                [-np.pi/2, c2m(5.5), c2m(2.5)],
-            ]
+            self.setSpeed(0,-w_base)
+            self.waitAngle(-3*np.pi/4)
 
-        for step in steps:
-            print("estoy en ", self.readOdometry())
-            print("Voy a ", step[1], step[2], step[0])
+            self.setSpeed(v_base, 0)
+            time.sleep(np.sqrt(2)*.4/v_base)
+
+            self.setSpeed(0,w_base)
+            self.waitAngle(-np.pi/4)
+
+            self.setSpeed(v_base,0)
+            time.sleep(2*np.sqrt(2)*.4/v_base)
+
+            self.setSpeed(0,-w_base)
+            self.waitAngle(-3*np.pi/4)
+
+            self.setSpeed(v_base,0)
+            time.sleep(np.sqrt(2)*.4/v_base)
             
-            self.go_to_free(step[1], step[2], step[0])
-
-
 
 
     def calibrateOdometry(self):
