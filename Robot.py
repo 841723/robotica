@@ -13,8 +13,10 @@ import cv2
 import numpy as np
 import picamera
 import math
-from lib.utils import deg_to_rad, norm_pi, rad_to_deg
+from lib.utils import deg_to_rad, norm_pi, rad_to_deg, c2m, polares
 from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
+from lib.simubot import hom, loc
+from numpy.linalg import inv
 from picamera.array import PiRGBArray
 
 
@@ -670,8 +672,8 @@ class Robot:
         elif -np.pi/4 <= th < np.pi/4:  # Close to 0 radians 
             return 2  # Right
 
-    def go_to(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
-        """ Mueve la entidad al objetivo
+    def go_to_cell(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
+        """ Mueve la entidad al objetivo. Comprueba si hay obstáculo y si lo hay, calibra la odometría y replanifica la ruta
             x_obj, y_obj: coordenadas del objetivo en m
         """        
         x, y, th = self.readOdometry()
@@ -692,8 +694,6 @@ class Robot:
             self.waitAngle(angle)
             self.setSpeed(0,0)
             
-        
-        
         x, y, th = self.readOdometry()
         if self.verbose:
             print("GO_T0 ODOMETRY: X --> {:.5f} y --> {:.5f} Ángulo --> {:.5f} rad --> {:.5f}".format(x, y, math.degrees(th), th))
@@ -783,7 +783,71 @@ class Robot:
             return True 
         
         
-    
+    def go_to_free(self, x_obj, y_obj, th_obj, v_base=0.1, w_base=np.pi/4):
+        """ Mueve la entidad al objetivo. No comprueba si hay obstáculos
+            :param x_obj: coordenadas del objetivo en m
+            :param y_obj: coordenadas del objetivo en m
+            :param th_obj: ángulo del objetivo en rad
+            :param v_base: velocidad lineal base
+            :param w_base: velocidad angular base
+        """
+        w_max = 2.0
+        v_max = 1.5
+        
+        rho_max = 8.0
+        alpha_max = np.pi
+        beta_max = np.pi
+        
+        kp, ka, kb = v_max/rho_max, w_max/alpha_max, w_max/beta_max
+        K = [[kp,0,0],[0,ka,kb]]
+
+        wXr = self.readOdometry()
+        
+        while True:
+            wXg = [x_obj, y_obj, th_obj]
+            gXr = loc(np.dot(inv(hom(wXg)),hom(wXr)))
+
+            gPr = polares(gXr[0], gXr[1], gXr[2])
+
+            [v,w]= np.dot(K, gPr)
+
+            print("v: ", v, "w: ", w)
+            self.setSpeed(v,w)
+            time.sleep(0.05)
+
+            if gPr[0] < 0.1 and np.abs(gPr[2]) < np.deg2rad(30):
+                return True
+
+            wXr = self.readOdometry()
+
+    def doS(self, currentMap):
+        assert currentMap == 'A' or currentMap == 'B', "Mapa no válido"
+
+        steps = []
+        sideDistance = 0.2
+
+        if currentMap == 'A':
+            steps = [
+                [-np.pi/2, c2m(1-sideDistance), c2m(5.5)],
+                [-np.pi/4, c2m(1.5), c2m(4.5)],
+                [-np.pi/2, c2m(2+sideDistance), c2m(3.5)],
+                [-np.pi/2, c2m(1.5), c2m(2.5)],
+            ]
+        elif currentMap == 'B':
+            steps = [
+                [-np.pi/2, c2m(6+sideDistance), c2m(5.5)],
+                [-np.pi/4, c2m(5.5), c2m(4.5)],
+                [-np.pi/2, c2m(5-sideDistance), c2m(3.5)],
+                [-np.pi/2, c2m(5.5), c2m(2.5)],
+            ]
+
+        for step in steps:
+            print("estoy en ", self.readOdometry())
+            print("Voy a ", step[1], step[2], step[0])
+            
+            self.go_to_free(step[1], step[2], step[0])
+
+
 
 
     def calibrateOdometry(self):
