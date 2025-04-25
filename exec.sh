@@ -20,10 +20,12 @@ ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/lib"
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/log"
 # Ensure the remote log directory exists
 ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/mapas"
+ssh $REMOTE_HOST "mkdir -p $REMOTE_DIR/fotos"
 
 # Copy all files from lib directory to remote
 scp $LOCAL_DIR/lib/* $REMOTE_HOST:$REMOTE_DIR/lib
 # scp $LOCAL_DIR/mapas/* $REMOTE_HOST:$REMOTE_DIR/mapas
+scp $LOCAL_DIR/fotos/* $REMOTE_HOST:$REMOTE_DIR/fotos
 
 
 # If copy was successful, execute the Python script

@@ -75,6 +75,9 @@ class Robot:
         self.SENSOR_LADO_DERECHO = self.BP.PORT_4
         self.BP.set_sensor_type(self.SENSOR_LADO_DERECHO, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
         
+        # Light sensor 
+        self.light_sensor_port = self.BP.PORT_2
+        self.BP.set_sensor_type(self.light_sensor_port, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
 
         # configure camera
         self.camera = None
@@ -726,6 +729,28 @@ class Robot:
 
         return x, y, th, None
 
+    def get_light_sensor_value(self):
+        """
+        Devuelve el valor del sensor de luz. Como referencia,
+        cuando el robot está sobre el suelo blanco, el valor debería estar alrededor de 1500
+        y para el suelo negro, el valor debería estar alrededor de 2300.
+        """   
+        try:
+            value = self.BP.get_sensor(self.light_sensor_port)
+        except brickpi3.SensorError as error:
+            print(error)
+            value = 2000
+        return value
+    
+    def disable_light_sensor(self):
+        self.BP.set_sensor_type(self.light_sensor_port, self.BP.SENSOR_TYPE.NONE)
+    
+    def is_starting_position_A(self):
+        light_sensor_value = self.get_light_sensor_value()
+        if self.verbose:
+            print("Light sensor value: ", light_sensor_value)
+        return light_sensor_value < 1900
+    
 
     def get_obstacle_distance(self):
         """ Devuelve la distancia al obstáculo en cm """
@@ -847,11 +872,11 @@ class Robot:
             
 
 
-    def calibrateOdometry(self):
+    def calibrateOdometry(self, number_of_cells=0, cell_size=40):
         """ Calibra la odometría del robot """
         # Comprueba con la distancia al obstáculo (estando en la misma celda)
         # De momento sólo se llama cuando detecta un obstáculo aparte 
-        distObj = 13 
+        distObj = 13 + (number_of_cells * cell_size)
         distanceError = 1
         distance = self.get_obstacle_distance()
         
