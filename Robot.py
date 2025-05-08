@@ -251,9 +251,9 @@ class Robot:
                 dx, dy, new_th = 0, 0, 0
                 try:
                     new_th = self.BP.get_sensor(self.PORT_GYRO)
-                    # print("Gyro: ", new_th)
+                    print("Gyro: ", new_th)
                     new_th = norm_pi(deg_to_rad(-new_th[0])+self.th_ini.value)
-                    # print("Gyro rads: ", new_th)
+                    print("Gyro rads: ", new_th)
                 except brickpi3.SensorError as error:
                     if self.verbose:
                         print("Error reading gyro sensor: ", error)

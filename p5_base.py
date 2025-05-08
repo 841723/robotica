@@ -44,9 +44,11 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
     # Initialize Odometry. 
     x_ini_meter = maze_ini_x * myMap.sizeCell/1000 + myMap.sizeCell/2000 
     y_ini_meter = maze_ini_y * myMap.sizeCell/1000 + myMap.sizeCell/2000
+    print("initial theta: ", maze_ini_th)
     robot.definePositionValues(x_ini_meter, y_ini_meter, maze_ini_th)
     robot.startOdometry()
         
+    print("Initial position: ", robot.readOdometry())
     # 3. perform trajectory in mm
     robotLocations = [ [x_ini_meter*1000, y_ini_meter*1000, 0] ]
 
@@ -63,7 +65,7 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
         x += myMap.sizeCell/2000
         y += myMap.sizeCell/2000
         
-        x_act, y_act, th_act, direction = robot.go_to(x, y)
+        x_act, y_act, th_act, direction = robot.go_to_cell(x, y)
         robotLocations.append([x_act*1000, y_act*1000, th_act])
 
         if direction is not None:
@@ -99,6 +101,8 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
     # This currently unconfigure the sensors, disable the motors,
     # and restore the LED to the control of the BrickPi3 firmware.
     robot.setSpeed(0, 0)
+    
+    myMap.drawMapWithRobotLocations(robotLocations, saveSnapshot=False)
 
 
 def main(args):
@@ -106,14 +110,16 @@ def main(args):
         robot = Robot(log_filename=args.log, verbose=args.verbose)
     
         # Detect side
-        if robot.is_starting_position_A():
+        # if robot.is_starting_position_A():
+        if True:
             print("Starting position A")
             starting_position = "A"
             map_file = args.mapfileA
             image_path = args.r2d2
             maze_ini_x = 1
             maze_ini_y = 2
-            maze_ini_th = -np.pi/2
+            # maze_ini_th = -np.pi/2
+            maze_ini_th = np.pi/2
             maze_end_x = 3
             maze_end_y = 3
             side_to_calibrate = "right"
