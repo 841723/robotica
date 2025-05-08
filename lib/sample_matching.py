@@ -17,7 +17,7 @@ if PI:
     import picamera
     from picamera.array import PiRGBArray
 
-DEBUG = 1 # --> higher numbers (2 or 3) open more windows interactively to debug more intermediate steps
+DEBUG = 2 # --> higher numbers (2 or 3) open more windows interactively to debug more intermediate steps
 
 # ASCI codes to interact with windows when debug > 0
 ESC = 27
@@ -64,7 +64,7 @@ def drawMatches2(img1, kp1, img2, kp2, matches, color=None, thickness = 2, mask=
  
  
 def match_images(img1_bgr, img2_bgr):
- 
+    print("Matching images...")
     # Feature extractor uses grayscale images
     img1 = cv2.cvtColor(img1_bgr, cv2.COLOR_BGR2GRAY)
     img2 = cv2.cvtColor(img2_bgr, cv2.COLOR_BGR2GRAY)
@@ -89,10 +89,10 @@ def match_images(img1_bgr, img2_bgr):
 
     if des1 is None or des2 is None:
         print("WARNING: empty detection?")
-        return False
+        return None, False
     if len(des1) < MIN_MATCH_COUNT or len(des2) < MIN_MATCH_COUNT:
         print("WARNING: not enough FEATURES (im1: %d, im2: %d)" %(len(des1), len(des2)) )
-        return False
+        return None, False
     print(" FEATURES extracted (im1: %d, im2: %d)" %(len(des1), len(des2)) )
         
 
@@ -122,7 +122,7 @@ def match_images(img1_bgr, img2_bgr):
             img_tmp = cv2.drawMatches(img1,kp1,img2,kp2,good,None)    
         cv2.imshow("All matches", img_tmp)
         cv2.waitKey(0)
-
+    center = None
     if len(good)>MIN_MATCH_COUNT:
         src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
         dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
@@ -133,33 +133,35 @@ def match_images(img1_bgr, img2_bgr):
             found = False
             print("NOT enough ROBUST matches found - %d (required %d)" % 
                 (num_robust_matches, MIN_MATCH_OBJECTFOUND))
-            return found
-        h,w = img1.shape
-        pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-        dst = cv2.perspectiveTransform(pts,H_21)
-        img2_res = cv2.polylines(img2_bgr, [np.int32(dst)], True, 
-                                 color=(255,255,255), thickness=3)
-        found = True
-        print("ROBUST matches found - %d (out of %d) --> OBJECT FOUND" % (np.sum(matchesMask), len(good)))
+        else:
+            h,w = img1.shape
+            pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+            dst = cv2.perspectiveTransform(pts,H_21)
+            img2_res = cv2.polylines(img2_bgr, [np.int32(dst)], True, 
+                                    color=(255,255,255), thickness=3)
+            found = True
+            print("ROBUST matches found - %d (out of %d) --> OBJECT FOUND" % (np.sum(matchesMask), len(good)))
+            center = np.mean(dst_pts[mask], axis=0).flatten()
     else:
         print("Not enough initial matches are found - %d (required %d)" % (len(good), MIN_MATCH_COUNT))
         matchesMask = None
         found = False
 
-    if DEBUG:
+    if DEBUG > 0:
         if int(ver[0]) < 3: # CURRENT RASPBERRY opencv version is 2.4.9
             img3 = drawMatches2(img1_bgr,kp1,img2_bgr,kp2, good, color=(0, 255, 0),
                 mask = matchesMask)
         else:
-            draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+            draw_params = dict(matchColor = (0,255,0),
                            singlePointColor = None,
-                           matchesMask = matchesMask, # draw only inliers
+                           matchesMask = matchesMask,
                            flags = 2)
             img3 = cv2.drawMatches(img1_bgr,kp1,img2_bgr,kp2,good,None,**draw_params)
         cv2.imshow("INLIERS", img3)
-        #cv2.waitKey(0) # WAIT is run outside
+        cv2.waitKey(0) # WAIT is run outside
+        cv2.destroyAllWindows()
 
-    return found
+    return center, found
  
    
 def find_template(mirror=False, img=None, refFilename = "R2-D2s.png"):

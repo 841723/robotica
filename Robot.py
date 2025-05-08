@@ -136,6 +136,11 @@ class Robot:
         :param v: velocidad lineal
         :param w: velocidad angular
         """
+
+        if v == 0 and w == 0:
+            self.BP.set_motor_dps(self.PORT_MOTOR_IZQUIERDA, 0)
+            self.BP.set_motor_dps(self.PORT_MOTOR_DERECHA, 0)
+            
         
         ## Calculo de las velocidades angulares de cada rueda
         w_d = v/self.R + w*self.L/(2*self.R)
@@ -240,20 +245,17 @@ class Robot:
                 self.anguloDerecha.value = encoderDerecha
                 self.anguloIzquierda.value = encoderIzquierda
                 
-
                 v = self.R/2 * (wDerecha + wIzquierda)
                 w = self.R/self.L * (wDerecha - wIzquierda)
                 
-                if w < 0.3 and w > -0.3:
-                    w = 0
+                # if w < 0.3 and w > -0.3:
+                #     w = 0
 
                 x_read, y_read, th_read = self.readOdometry()
                 dx, dy, new_th = 0, 0, 0
                 try:
                     new_th = self.BP.get_sensor(self.PORT_GYRO)
-                    print("Gyro: ", new_th)
                     new_th = norm_pi(deg_to_rad(-new_th[0])+self.th_ini.value)
-                    print("Gyro rads: ", new_th)
                 except brickpi3.SensorError as error:
                     if self.verbose:
                         print("Error reading gyro sensor: ", error)
@@ -269,7 +271,7 @@ class Robot:
                 self.lock_odometry.acquire()
                 self.x.value = x_read + dx
                 self.y.value = y_read + dy
-                # self.th.value = th_read + w*self.P
+                # self.th.value = th_read + w*self.P # Using odometry
                 self.th.value = new_th
                 self.v.value = v
                 self.w.value = w
@@ -306,7 +308,7 @@ class Robot:
         return min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi)))
 
     
-    def waitAngle(self, ang_final, tolerancia=0.03):
+    def waitAngle(self, ang_final, tolerancia=0.05):
         """Waits until the robot reaches a specific angle with a given tolerance
         :param ang_final: desired angle in radians
         :param tolerancia: tolerance in radians 
@@ -341,9 +343,14 @@ class Robot:
                     break
             else:
                 error_count = 0
+
+        self.setSpeed(0, 0)
+
         if self.verbose:
             print("Angulo deseado: ", ang_final, "Angulo alcanzado: ", ang_actual)
             print("Error: ", distancia_a_final)
+
+        return
             
         
     def waitPosition(self, x_deseado, y_deseado, tolerancia=0.03):
@@ -389,6 +396,8 @@ class Robot:
         if self.verbose:
             print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
             print("Error:", diferencia_posicion)
+        
+        return
 
     def waitPositionWithWallCorrection(self, x_deseado, y_deseado, v_base=0.1, tolerancia=0.03):
         """Waits until the robot reaches a specific position with a given tolerance and corrects the position
@@ -649,10 +658,10 @@ class Robot:
     def definePositionValues(self, x, y, th):
         """ Define la posición del robot """
         self.lock_odometry.acquire()
-        self.x = Value('d', x)
-        self.y = Value('d', y)
-        self.th = Value('d', th)
-        self.th_ini = Value('d', th)
+        self.x.value = x
+        self.y.value = y
+        self.th.value = th
+        self.th_ini.value = th
         self.lock_odometry.release()
 
 
@@ -688,7 +697,7 @@ class Robot:
         # Calcular la diferencia angular
         angle_diff = norm_pi(angle - th)
         
-        if abs(angle_diff) > 0.05:
+        if abs(angle_diff) > 0.5:
             if self.verbose:
                 print("Girando a ", math.degrees(angle), "grados")
             # Determinar la dirección del giro
@@ -845,30 +854,28 @@ class Robot:
 
             wXr = self.readOdometry()
 
-    def doS(self, currentMap):
+    def doS(self, currentMap, w_base=-np.pi/4, radioD=0.2):
         assert currentMap == 'A' or currentMap == 'B', "Mapa no válido"
 
-        w_base = np.pi/4
-        v_base = 0.2
+        radioD = 0.4
 
-        if currentMap == 'A':
-            self.setSpeed(0,-w_base)
-            self.waitAngle(-3*np.pi/4)
+        if currentMap == 'B':
+            w_base = -w_base
 
-            self.setSpeed(v_base, 0)
-            time.sleep(np.sqrt(2)*.4/v_base)
+        # 1. Giro 90 grados 
+        self.setSpeed(0, -w_base)
+        self.waitAngle(-np.pi)
+        self.setSpeed(0, 0)
 
-            self.setSpeed(0,w_base)
-            self.waitAngle(-np.pi/4)
+        # 2. Semicírculo radio d izquierda
+        self.setSpeed(w_base * radioD, w_base)
+        self.waitAngle(0)
+        self.setSpeed(0, 0)
 
-            self.setSpeed(v_base,0)
-            time.sleep(2*np.sqrt(2)*.4/v_base)
-
-            self.setSpeed(0,-w_base)
-            self.waitAngle(-3*np.pi/4)
-
-            self.setSpeed(v_base,0)
-            time.sleep(np.sqrt(2)*.4/v_base)
+        # 3.1. Círculo radio d derecha
+        self.setSpeed(w_base * radioD, -w_base)
+        self.waitAngle(-np.pi)
+        self.setSpeed(0, 0)
             
 
 

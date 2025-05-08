@@ -11,6 +11,13 @@ matplotlib.use("TkAgg")
 
 # from Robot import Robot
 from lib.MapLib import Map2D
+from enum import Enum
+
+class StartingPosition(Enum):
+    A = 'A'
+    B = 'B'
+
+
 
 # Calibration using ultrasonic sensors
 def calibrate_before_maze(robot: Robot, side_to_calibrate, w_base=0.5):
@@ -20,13 +27,18 @@ def calibrate_before_maze(robot: Robot, side_to_calibrate, w_base=0.5):
     elif side_to_calibrate == "right":
         sign = -1
         angle_to_reach = -np.pi
-    robot.setSpeed(0, sign*w_base)
-    # robot.waitAngle(sign*np.pi/2)
-    robot.waitAngle(angle_to_reach)
+    # robot.setSpeed(0, sign*w_base)
+    # # robot.waitAngle(sign*np.pi/2)
+    # robot.waitAngle(angle_to_reach)
     robot.calibrateOdometry(number_of_cells=1)
     robot.setSpeed(0, -sign*w_base)
     robot.waitAngle(-np.pi/2)
+    print(robot.readOdometry())
+    robot.setSpeed(0, 0)
+    print(robot.readOdometry())
     robot.calibrateOdometry(number_of_cells=2)
+    robot.setSpeed(0, 0)
+    
     
 # def calibrate_using_image(robot: Robot): # TODO 
 
@@ -113,19 +125,19 @@ def main(args):
         # if robot.is_starting_position_A():
         if True:
             print("Starting position A")
-            starting_position = "A"
+            starting_position = StartingPosition.A
             map_file = args.mapfileA
             image_path = args.r2d2
             maze_ini_x = 1
             maze_ini_y = 2
-            # maze_ini_th = -np.pi/2
-            maze_ini_th = np.pi/2
+            maze_ini_th = -np.pi/2
+            # maze_ini_th = np.pi/2
             maze_end_x = 3
             maze_end_y = 3
             side_to_calibrate = "right"
         else:
             print("Starting position B")
-            starting_position = "B"
+            starting_position = StartingPosition.B
             map_file = args.mapfileB
             image_path = args.bb8
             
@@ -145,15 +157,15 @@ def main(args):
             print("Image file %s does not exist" % image_path)
             exit(1)
            
-        robot.definePositionValues(0.6,3,-np.pi/2)
+        robot.definePositionValues(0.6,3,-np.pi/2) # TODO: parametrizar
         time.sleep(2)
 
         robot.startOdometry()
         
         # do S 
-        # robot.doS(starting_position)
+        robot.doS('A', w_base=np.pi/6, radioD=0.4)
 
-        # calibrate_before_maze(robot, side_to_calibrate=side_to_calibrate)
+        calibrate_before_maze(robot, side_to_calibrate=side_to_calibrate)
         solve_maze(robot, map_file, maze_ini_x, maze_ini_y,
                    maze_ini_th, maze_end_x, maze_end_y)
         
