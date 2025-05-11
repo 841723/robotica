@@ -743,12 +743,15 @@ class Robot:
         Devuelve el valor del sensor de luz. Como referencia,
         cuando el robot está sobre el suelo blanco, el valor debería estar alrededor de 1500
         y para el suelo negro, el valor debería estar alrededor de 2300.
-        """   
-        try:
-            value = self.BP.get_sensor(self.light_sensor_port)
-        except brickpi3.SensorError as error:
-            print(error)
-            value = 2000
+        """
+        sensor_error = True
+        while sensor_error:
+            try:
+                value = self.BP.get_sensor(self.light_sensor_port)
+                sensor_error = False
+            except brickpi3.SensorError as error:
+                print("Error getting light_sensor value", error)
+                time.sleep(0.2)
         return value
     
     def disable_light_sensor(self):

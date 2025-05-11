@@ -13,11 +13,6 @@ matplotlib.use("TkAgg")
 from lib.MapLib import Map2D
 from enum import Enum
 
-class StartingPosition(Enum):
-    A = 'A'
-    B = 'B'
-
-
 
 # Calibration using ultrasonic sensors
 def calibrate_before_maze(robot: Robot, side_to_calibrate, w_base=0.5):
@@ -118,58 +113,131 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
 
 
 def main(args):
+    _map = {
+        'A' :{
+            'map_file': args.mapfileA,
+            'image_path': args.r2d2,
+
+            'maze_ini_x': 1,
+            'maze_ini_y': 2,
+            'maze_ini_th': -np.pi/2,
+            'maze_end_x': 3,
+            'maze_end_y': 3,
+
+            'initial_position': (0.6,3),
+            'initial_angle': -np.pi/2,
+
+            'side_to_calibrate': "right"
+        },
+        'B' :{
+            'map_file': args.mapfileB,
+            'image_path': args.bb8,
+            'maze_ini_x': 5,
+            'maze_ini_y': 2,
+            'maze_ini_th': -np.pi/2,
+            'maze_end_x': 3,
+            'maze_end_y': 3,
+
+            'initial_position': (5,2),
+            'initial_angle': -np.pi/2,
+
+            'side_to_calibrate': "left"
+        }
+    }
     try:
         robot = Robot(log_filename=args.log, verbose=args.verbose)
     
         # Detect side
-        # if robot.is_starting_position_A():
-        if True:
-            print("Starting position A")
-            starting_position = StartingPosition.A
-            map_file = args.mapfileA
-            image_path = args.r2d2
-            maze_ini_x = 1
-            maze_ini_y = 2
-            maze_ini_th = -np.pi/2
-            # maze_ini_th = np.pi/2
-            maze_end_x = 3
-            maze_end_y = 3
-            side_to_calibrate = "right"
+        if args.mapSide is None:
+            starting_position = 'A' if robot.is_starting_position_A() else 'B'
         else:
-            print("Starting position B")
-            starting_position = StartingPosition.B
-            map_file = args.mapfileB
-            image_path = args.bb8
-            
-            maze_ini_x = 5
-            maze_ini_y = 2 
-            maze_ini_th = -np.pi/2 # TODO: este ángulo?
-            maze_end_x = 3
-            maze_end_y = 3
-            side_to_calibrate = "left"
+            starting_position = args.mapSide.upper()
         
+
+        map_config = _map[starting_position]
+        map_config.append({
+            's_w_base': np.pi/6,
+            's_radioD': 0.4,
+
+            'ball_v_base': 0.4,
+            'ball_w_base': np.pi/2,
+            'ball_catch': True,
+            'ball_targetX': 320/2-10,
+            'ball_minObjectiveTargetSize': 4500,
+            'ball_maxObjectiveTargetSize': 8500,
+            'ball_detection_tolerance': 30,
+            'ball_maxYValue': 32,
+            'ball_colorMasks': {
+                'red': [
+                    (np.array([0, 70, 50]),np.array([10, 255, 255])),
+                    (np.array([170, 70, 50]),np.array([180, 255, 255])),
+                ],
+                'blue': [
+                    (np.array([100, 70, 50]),np.array([130, 255, 255])),
+                    (np.array([90, 70, 50]),np.array([110, 255, 255])),
+                ]
+            }
+        })
+
+        print("Running on map ", starting_position)
+                    
         robot.disable_light_sensor()
 
-        if not os.path.isfile(map_file):
-            print('Map file %s does not exist' % map_file)
+        if not os.path.isfile(map_config.map_file):
+            print('Map file %s does not exist' % map_config.map_file)
             exit(1)
-        elif not os.path.isfile(image_path):
-            print("Image file %s does not exist" % image_path)
+        elif not os.path.isfile(map_config.image_path):
+            print("Image file %s does not exist" % map_config.image_path)
             exit(1)
            
-        robot.definePositionValues(0.6,3,-np.pi/2) # TODO: parametrizar
+        robot.definePositionValues(
+            map_config.initial_position[0], 
+            map_config.initial_position[1], 
+            map_config.initial_angle
+        ) 
         time.sleep(2)
 
         robot.startOdometry()
-        
-        # do S 
-        robot.doS('A', w_base=np.pi/6, radioD=0.4)
 
-        calibrate_before_maze(robot, side_to_calibrate=side_to_calibrate)
-        solve_maze(robot, map_file, maze_ini_x, maze_ini_y,
-                   maze_ini_th, maze_end_x, maze_end_y)
+        # wait until 'enter' is pressed
+        if args.waitKey:
+            input("Press Enter to continue...") 
+        
+
+        # do S 
+        robot.doS(starting_position, w_base=map_config.s_w_base, radioD=map_config.s_radioD)
+
+        # calibrate robot position
+        calibrate_before_maze(robot, side_to_calibrate=map_config.side_to_calibrate)
+
+        # do maze
+        solve_maze(
+            robot, 
+            map_config.map_file, 
+            map_config.maze_ini_x, 
+            map_config.maze_ini_y,
+            map_config.maze_ini_th, 
+            map_config.maze_end_x, 
+            map_config.maze_end_y
+        )
         
         
+        # ¿? calibrate robot position ¿? --TODO if needed
+
+        # go for ball
+        robot.trackObject(
+            v_base=map_config.v_base, 
+            w_base=map_config.w_base, 
+            catch=map_config.catch,
+            targetX=map_config.targetX,
+            minObjectiveTargetSize=map_config.minObjectiveTargetSize,
+            maxObjectiveTargetSize=map_config.maxObjectiveTargetSize,
+            detection_tolerance=map_config.detection_tolerance,
+            maxYValue=map_config.maxYValue,
+            colorMasks=map_config.colorMasks[args.mask]
+        )
+
+        # exit the circuit
         
         # wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
@@ -190,7 +258,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-
     # get and parse arguments passed to main
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
@@ -198,10 +265,20 @@ if __name__ == "__main__":
                         type=str, default="mapas/mapaA_CARRERA.txt")
     parser.add_argument("-B", "--mapfileB", help="Path to the map file for the starting position B",
                         type=str, default="mapas/mapaB_CARRERA.txt")
+    parser.add_argument("-s", "--mapSide", help="Map side to use (\"A\" or \"B\")",
+                        type=str, default=None)
+    
+    parser.add_argument("-w", "--waitKey", help="Wait for key press before starting",
+                        type=bool, default=True)
+    
     parser.add_argument("-bb8", help="Path to BB8 image",
                         type=str, default="fotos/BB8_s.png")
     parser.add_argument("-r2d2", help="Path to R2D2 image",
                         type=str, default="fotos/R2-D2_s.png")
+    
+    parser.add_argument("-m", "--mask", help="color of the ball to track",
+                        type=str, default="red")
+                        
     parser.add_argument("-l", "--log", help="Log file",
                 type=str, default="default.log") 
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
