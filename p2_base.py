@@ -19,9 +19,14 @@ def pruebaBaldosas(robot, v_base, num_baldosas):
 # Cada baldosa tiene un tamaño de 0.4 m
 def pruebaBaldosasOdometria(robot, v_base, num_baldosas):
     TAMANO_BALDOSA = 0.4
+    robot.lock_odometry.acquire()
+    x = robot.x.value
+    y = robot.y.value
+    robot.lock_odometry.release()
+
     robot.setSpeed(v_base, 0)
-    robot.waitPosition(robot.x.value + TAMANO_BALDOSA * num_baldosas,
-                           robot.y.value)
+    robot.waitPosition(x + TAMANO_BALDOSA * num_baldosas,
+                           y)
     
 # Gira num_giros a velocidad w_base
 # Cada giro es de 180 grados

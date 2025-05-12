@@ -248,8 +248,8 @@ class Robot:
                 v = self.R/2 * (wDerecha + wIzquierda)
                 w = self.R/self.L * (wDerecha - wIzquierda)
                 
-                # if w < 0.3 and w > -0.3:
-                #     w = 0
+                if w < 0.3 and w > -0.3:
+                    w = 0
 
                 x_read, y_read, th_read = self.readOdometry()
                 dx, dy, new_th = 0, 0, 0
@@ -280,6 +280,8 @@ class Robot:
                 # save LOG
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                    
+                # print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
 
             except IOError as error:
                 sys.stdout.write(error)
@@ -384,7 +386,7 @@ class Robot:
             diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
             
             if self.verbose:
-                print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion)
+                print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion, "velocidad:", self.v.value, "angular:", self.w.value)
             
             if diferencia_posicion > diferencia_posicion_anterior:
                 error_count += 1
@@ -828,8 +830,8 @@ class Robot:
             :param v_base: velocidad lineal base
             :param w_base: velocidad angular base
         """
-        w_max = 2.0
-        v_max = 1.5
+        w_max = 1.5
+        v_max = 0.4
         
         rho_max = 8.0
         alpha_max = np.pi
@@ -862,25 +864,36 @@ class Robot:
 
         radioD = 0.4
 
-        if currentMap == 'B':
-            w_base = -w_base
+        if currentMap == 'A':        # 1. Giro 90 grados 
+            self.setSpeed(0, -w_base)
+            self.waitAngle(-np.pi)
+            self.setSpeed(0, 0)
 
-        # 1. Giro 90 grados 
-        self.setSpeed(0, -w_base)
-        self.waitAngle(-np.pi)
-        self.setSpeed(0, 0)
+            # 2. Semicírculo radio d izquierda
+            self.setSpeed(w_base * radioD, w_base)
+            self.waitAngle(0)
+            self.setSpeed(0, 0)
 
-        # 2. Semicírculo radio d izquierda
-        self.setSpeed(w_base * radioD, w_base)
-        self.waitAngle(0)
-        self.setSpeed(0, 0)
+            # 3.1. Círculo radio d derecha
+            self.setSpeed(w_base * radioD, -w_base)
+            self.waitAngle(-np.pi)
+            self.setSpeed(0, 0)
 
-        # 3.1. Círculo radio d derecha
-        self.setSpeed(w_base * radioD, -w_base)
-        self.waitAngle(-np.pi)
-        self.setSpeed(0, 0)
-            
+        elif currentMap == 'B':
+            self.setSpeed(0, w_base)
+            self.waitAngle(0)
+            self.setSpeed(0, 0)
 
+            # 2. Semicírculo radio d derecha
+            self.setSpeed(w_base * radioD, -w_base)
+            self.waitAngle(-np.pi)
+            self.setSpeed(0, 0)
+
+            # 3.1. Círculo radio d izquierda
+            self.setSpeed(w_base * radioD, w_base)
+            self.waitAngle(0)
+            self.setSpeed(0, 0)
+    
 
     def calibrateOdometry(self, number_of_cells=0, cell_size=40):
         """ Calibra la odometría del robot """
