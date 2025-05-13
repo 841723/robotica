@@ -14,8 +14,14 @@ matplotlib.use("TkAgg")
 from lib.MapLib import Map2D
 from enum import Enum
 
+def pruebaBaldosasOdometria(robot, v_base, num_baldosas):
+    TAMANO_BALDOSA = 0.4
+    robot.setSpeed(v_base, 0)
+    robot.waitPosition(robot.x.value + TAMANO_BALDOSA * num_baldosas,
+                           robot.y.value)
+
 # Calibration using ultrasonic sensors
-def calibrate_before_maze(robot: Robot, side_to_calibrate, maze_ini_position, w_base=0.5):
+def calibrate_before_maze(robot: Robot, side_to_calibrate, w_base=0.5):
     if side_to_calibrate == "left":
         sign = 1
         angle_to_reach = 0
@@ -31,9 +37,7 @@ def calibrate_before_maze(robot: Robot, side_to_calibrate, maze_ini_position, w_
     print(robot.readOdometry())
     robot.setSpeed(0, 0)
     print(robot.readOdometry())
-    robot.calibrateOdometry(number_of_cells=2, 
-                            expected_x = maze_ini_position[0], 
-                            expected_y = maze_ini_position[1])
+    robot.calibrateOdometry(number_of_cells=2)
     robot.setSpeed(0, 0)
     
     
@@ -113,7 +117,7 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
     # myMap.drawMapWithRobotLocations(robotLocations, saveSnapshot=False)
 
 
-def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/6):
+def calibrate_before_recognition(robot, w_base=np.pi/6):
     _, _, th = robot.readOdometry()
     # Si está cerca de 0 giramos hacia 180 (para evitar que la cesta se choque con la pared)
     if th < np.pi/2 or th > -np.pi/2:
@@ -124,7 +128,7 @@ def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/
         robot.waitAngle(0)
         
     robot.setSpeed(0, 0)
-    robot.calibrateOdometry(distObj=73)
+    robot.calibrateOdometry(distObj=75)
     
     if th < np.pi/2 or th > -np.pi/2:
         robot.setSpeed(0, -w_base)
@@ -133,9 +137,7 @@ def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/
     
     robot.waitAngle(np.pi/2)
     robot.setSpeed(0, 0)
-    robot.calibrateOdometry(distObj=73, 
-                            expected_x = center_calibrate_position[0], 
-                            expected_y = center_calibrate_position[1]) 
+    robot.calibrateOdometry(distObj=75)
     return
 
 
@@ -148,17 +150,13 @@ def main(args):
             'maze_ini_x': 1,
             'maze_ini_y': 2,
             'maze_ini_th': -np.pi/2,
-            'maze_ini_position': (1*.4+.2, 2*.4+.2),
             'maze_end_x': 3,
             'maze_end_y': 3,
 
             'initial_position': (0.6,3),
+            'initial_angle': -np.pi/2,
 
-            'side_to_calibrate': "right",
-            
-            'center_calibrate_position': (5*.4, 5*.4),
-            'l_position_x': 3*.4+.2,
-            'r_position_x': 6*.4+.2
+            'side_to_calibrate': "right"
         },
         'B' :{
             'map_file': args.mapfileB,
@@ -166,170 +164,27 @@ def main(args):
             'maze_ini_x': 5,
             'maze_ini_y': 2,
             'maze_ini_th': -np.pi/2,
-            'maze_ini_position': (5*.4+.2, 2*.4+.2),
             'maze_end_x': 3,
             'maze_end_y': 3,
 
             'initial_position': (2.2,2.6),
+            'initial_angle': -np.pi/2,
 
-            'side_to_calibrate': "left",
-            
-            'center_calibrate_position': (2*.4, 5*.4),
-            'l_position_x': 0+.2,
-            'r_position_x': 3*.4+.2,
+            'side_to_calibrate': "left"
         }
     }
     try:
         robot = Robot(log_filename=args.log, verbose=args.verbose)
-        
-
-        # Detect side
-        if args.mapSide is None:
-            starting_position = 'A' if robot.is_starting_position_A() else 'B'
-        else:
-            starting_position = args.mapSide.upper()
-        
-        map_config = _map[starting_position]
-        map_config.update({
-            's_w_base': np.pi/6,
-            's_radioD': 0.4,
-            
-            'initial_angle': -np.pi/2,
-            'final_position_y': 7*.4,
-            'final_position_th': np.pi/2,
-
-            'ball_v_base': 0.2,
-            'ball_w_base': np.pi/2,
-            'ball_catch': True,
-            'ball_targetX': 320/2-10,
-            'ball_minObjectiveTargetSize': 4500,
-            'ball_maxObjectiveTargetSize': 8500,
-            'ball_detection_tolerance': 100,
-            'ball_maxYValue': 32,
-            'ball_colorMasks': {
-                'red': [
-                    (np.array([0, 70, 50]),np.array([5, 255, 255])),
-                    (np.array([170, 70, 50]),np.array([180, 255, 255])),
-                ],
-                'blue': [
-                    (np.array([100, 70, 50]),np.array([130, 255, 255])),
-                    (np.array([90, 70, 50]),np.array([110, 255, 255])),
-                ]
-            }
-        })
-        
-        map_images = {
-            'A': './fotos/BB8_s.png',
-            'B': './fotos/R2-D2_s.png',
-            'robot': 'BB8'
-        }
-        
-
-        print("Running on map ", starting_position)
-                    
-        robot.disable_light_sensor()
-
-        if not os.path.isfile(map_config['map_file']):
-            print('Map file %s does not exist' % map_config['map_file'])
-            exit(1)
-        elif not os.path.isfile(map_config['image_path']):
-            print("Image file %s does not exist" % map_config['image_path'])
-            exit(1)
-           
-        robot.definePositionValues(
-            map_config['initial_position'][0], 
-            map_config['initial_position'][1], 
-            map_config['initial_angle']
-        ) 
-
+        time.sleep(2)
         robot.startOdometry()
-
-        # wait until 'enter' is pressed
-        if args.waitKey:
-            input("Press Enter to continue...")
-
-
-        # do S 
-        robot.doS(
-            starting_position,
-            w_base=map_config['s_w_base'], 
-            radioD=map_config['s_radioD']
+        robot.definePositionValues(0,0,np.pi/2)
+        
+        robot.waitPositionWithWallCorrection(
+            0,
+            1.5,
+            v_base=0.1,
         )
-
-        # # calibrate robot position
-        # calibrate_before_maze(
-        #     robot,
-        #     side_to_calibrate=map_config['side_to_calibrate'],
-        #     maze_ini_position=map_config['maze_ini_position'],
-        #     w_base=map_config['s_w_base']
-        # )
         
-        # # do maze
-        # solve_maze(
-        #     robot, 
-        #     map_config['map_file'], 
-        #     map_config['maze_ini_x'], 
-        #     map_config['maze_ini_y'],
-        #     map_config['maze_ini_th'], 
-        #     map_config['maze_end_x'], 
-        #     map_config['maze_end_y']
-        # )
-
-        # # go for ball
-        # robot.trackObject(
-        #     v_base=map_config['ball_v_base'], 
-        #     w_base=map_config['ball_w_base'], 
-        #     catch=map_config['ball_catch'],
-        #     targetX=map_config['ball_targetX'],
-        #     minObjectiveTargetSize=map_config['ball_minObjectiveTargetSize'],
-        #     maxObjectiveTargetSize=map_config['ball_maxObjectiveTargetSize'],
-        #     detection_tolerance=map_config['ball_detection_tolerance'],
-        #     maxYValue=map_config['ball_maxYValue'],
-        #     colorMasks=map_config['ball_colorMasks'][args.mask]
-        # )
-
-
-        # # exit the circuit
-        # # robot.go_to_free(
-        # #     x_obj=0.2,
-        # #     y_obj=2.6,
-        # #     th_obj=np.pi/2
-        # # )
-        
-        
-        # # robot.go_to_free(
-        # #     x_obj=0+.8,
-        # #     y_obj=5*.4,
-        # #     th_obj=np.pi/2
-        # # )
-        
-        
-        # calibrate_before_recognition(robot, map_config['center_calibrate_position'], w_base=map_config['s_w_base'])
-        
-        # side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
-        
-        # print("Decide side: %s" % side)
-        # # robot.setSpeed(0, 0)
-        # if side == "l":
-        #     # robot.setSpeed(0, map_config['s_w_base'])
-        #     # robot.waitAngle(3*np.pi/4)
-        #     # robot.setSpeed(0, 0)
-        #     print("Going left x:", map_config['l_position_x'])
-        #     robot.go_to_free(
-        #         x_obj=map_config['l_position_x'],
-        #         y_obj=map_config['final_position_y'],
-        #         th_obj=map_config['final_position_th']
-        #     )
-        # else:
-        #     # robot.setSpeed(0, -map_config['s_w_base'])
-        #     # robot.waitAngle(np.pi/4)
-        #     # robot.setSpeed(0, 0)   
-        #     print("Going right x:", map_config['r_position_x'])
-        #     robot.go_to_free(
-        #         x_obj=map_config['r_position_x'],
-        #         y_obj=map_config['final_position_y'],
-        #         th_obj=map_config['final_position_th']
-        #     )
         
         # wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
@@ -358,7 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("-B", "--mapfileB", help="Path to the map file for the starting position B",
                         type=str, default="mapas/mapaB_CARRERA.txt")
     parser.add_argument("-s", "--mapSide", help="Map side to use (\"A\" or \"B\")",
-                        type=str, default=None)
+                        type=str, default="B")
     
     parser.add_argument("-w", "--waitKey", help="Wait for key press before starting",
                         type=bool, default=True)

@@ -17,7 +17,7 @@ if PI:
     import picamera
     from picamera.array import PiRGBArray
 
-DEBUG = 0 # --> higher numbers (2 or 3) open more windows interactively to debug more intermediate steps
+DEBUG = 2 # --> higher numbers (2 or 3) open more windows interactively to debug more intermediate steps
 
 # ASCI codes to interact with windows when debug > 0
 ESC = 27
@@ -27,7 +27,7 @@ letter_s = 115
 MAX_FEATURES = 500
 # REQUIRED number of correspondences (matches) found:
 MIN_MATCH_COUNT=20          # initially
-MIN_MATCH_OBJECTFOUND=12    # after robust check, to consider object-found
+MIN_MATCH_OBJECTFOUND=15    # after robust check, to consider object-found
 
 
 def drawMatches2(img1, kp1, img2, kp2, matches, color=None, thickness = 2, mask=None): 
@@ -120,7 +120,7 @@ def match_images(img1_bgr, img2_bgr):
             img_tmp = drawMatches2(img1,kp1,img2,kp2,good)
         else:
             img_tmp = cv2.drawMatches(img1,kp1,img2,kp2,good,None)    
-        # cv2.imshow("All matches", img_tmp)
+        cv2.imshow("All matches", img_tmp)
         cv2.waitKey(0)
     center = None
     if len(good)>MIN_MATCH_COUNT:
@@ -157,7 +157,7 @@ def match_images(img1_bgr, img2_bgr):
                            matchesMask = matchesMask,
                            flags = 2)
             img3 = cv2.drawMatches(img1_bgr,kp1,img2_bgr,kp2,good,None,**draw_params)
-        # cv2.imshow("INLIERS", img3)
+        cv2.imshow("INLIERS", img3)
         cv2.waitKey(0) # WAIT is run outside
         cv2.destroyAllWindows()
 
@@ -189,8 +189,8 @@ def find_template(mirror=False, img=None, refFilename = "R2-D2s.png"):
             
             frame = cv2.flip(frame, -1) # to rotate 180
             if DEBUG > 2:
-                # cv2.imshow("Current view", frame)
-                # cv2.imshow("Current target", imReference)
+                cv2.imshow("Current view", frame)
+                cv2.imshow("Current target", imReference)
                 cv2.waitKey(0)
             
             t2 = time.time()
