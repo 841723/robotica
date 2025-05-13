@@ -256,80 +256,80 @@ def main(args):
             radioD=map_config['s_radioD']
         )
 
-        # # calibrate robot position
-        # calibrate_before_maze(
-        #     robot,
-        #     side_to_calibrate=map_config['side_to_calibrate'],
-        #     maze_ini_position=map_config['maze_ini_position'],
-        #     w_base=map_config['s_w_base']
+        # calibrate robot position
+        calibrate_before_maze(
+            robot,
+            side_to_calibrate=map_config['side_to_calibrate'],
+            maze_ini_position=map_config['maze_ini_position'],
+            w_base=map_config['s_w_base']
+        )
+        
+        # do maze
+        solve_maze(
+            robot, 
+            map_config['map_file'], 
+            map_config['maze_ini_x'], 
+            map_config['maze_ini_y'],
+            map_config['maze_ini_th'], 
+            map_config['maze_end_x'], 
+            map_config['maze_end_y']
+        )
+
+        # go for ball
+        robot.trackObject(
+            v_base=map_config['ball_v_base'], 
+            w_base=map_config['ball_w_base'], 
+            catch=map_config['ball_catch'],
+            targetX=map_config['ball_targetX'],
+            minObjectiveTargetSize=map_config['ball_minObjectiveTargetSize'],
+            maxObjectiveTargetSize=map_config['ball_maxObjectiveTargetSize'],
+            detection_tolerance=map_config['ball_detection_tolerance'],
+            maxYValue=map_config['ball_maxYValue'],
+            colorMasks=map_config['ball_colorMasks'][args.mask]
+        )
+
+
+        # exit the circuit
+        # robot.go_to_free(
+        #     x_obj=0.2,
+        #     y_obj=2.6,
+        #     th_obj=np.pi/2
         # )
         
-        # # do maze
-        # solve_maze(
-        #     robot, 
-        #     map_config['map_file'], 
-        #     map_config['maze_ini_x'], 
-        #     map_config['maze_ini_y'],
-        #     map_config['maze_ini_th'], 
-        #     map_config['maze_end_x'], 
-        #     map_config['maze_end_y']
+        
+        # robot.go_to_free(
+        #     x_obj=0+.8,
+        #     y_obj=5*.4,
+        #     th_obj=np.pi/2
         # )
-
-        # # go for ball
-        # robot.trackObject(
-        #     v_base=map_config['ball_v_base'], 
-        #     w_base=map_config['ball_w_base'], 
-        #     catch=map_config['ball_catch'],
-        #     targetX=map_config['ball_targetX'],
-        #     minObjectiveTargetSize=map_config['ball_minObjectiveTargetSize'],
-        #     maxObjectiveTargetSize=map_config['ball_maxObjectiveTargetSize'],
-        #     detection_tolerance=map_config['ball_detection_tolerance'],
-        #     maxYValue=map_config['ball_maxYValue'],
-        #     colorMasks=map_config['ball_colorMasks'][args.mask]
-        # )
-
-
-        # # exit the circuit
-        # # robot.go_to_free(
-        # #     x_obj=0.2,
-        # #     y_obj=2.6,
-        # #     th_obj=np.pi/2
-        # # )
         
         
-        # # robot.go_to_free(
-        # #     x_obj=0+.8,
-        # #     y_obj=5*.4,
-        # #     th_obj=np.pi/2
-        # # )
+        calibrate_before_recognition(robot, map_config['center_calibrate_position'], w_base=map_config['s_w_base'])
         
+        side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
         
-        # calibrate_before_recognition(robot, map_config['center_calibrate_position'], w_base=map_config['s_w_base'])
-        
-        # side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
-        
-        # print("Decide side: %s" % side)
-        # # robot.setSpeed(0, 0)
-        # if side == "l":
-        #     # robot.setSpeed(0, map_config['s_w_base'])
-        #     # robot.waitAngle(3*np.pi/4)
-        #     # robot.setSpeed(0, 0)
-        #     print("Going left x:", map_config['l_position_x'])
-        #     robot.go_to_free(
-        #         x_obj=map_config['l_position_x'],
-        #         y_obj=map_config['final_position_y'],
-        #         th_obj=map_config['final_position_th']
-        #     )
-        # else:
-        #     # robot.setSpeed(0, -map_config['s_w_base'])
-        #     # robot.waitAngle(np.pi/4)
-        #     # robot.setSpeed(0, 0)   
-        #     print("Going right x:", map_config['r_position_x'])
-        #     robot.go_to_free(
-        #         x_obj=map_config['r_position_x'],
-        #         y_obj=map_config['final_position_y'],
-        #         th_obj=map_config['final_position_th']
-        #     )
+        print("Decide side: %s" % side)
+        # robot.setSpeed(0, 0)
+        if side == "l":
+            # robot.setSpeed(0, map_config['s_w_base'])
+            # robot.waitAngle(3*np.pi/4)
+            # robot.setSpeed(0, 0)
+            print("Going left x:", map_config['l_position_x'])
+            robot.go_to_free(
+                x_obj=map_config['l_position_x'],
+                y_obj=map_config['final_position_y'],
+                th_obj=map_config['final_position_th']
+            )
+        else:
+            # robot.setSpeed(0, -map_config['s_w_base'])
+            # robot.waitAngle(np.pi/4)
+            # robot.setSpeed(0, 0)   
+            print("Going right x:", map_config['r_position_x'])
+            robot.go_to_free(
+                x_obj=map_config['r_position_x'],
+                y_obj=map_config['final_position_y'],
+                th_obj=map_config['final_position_th']
+            )
         
         # wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,

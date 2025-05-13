@@ -137,7 +137,6 @@ class Robot:
         :param v: velocidad lineal
         :param w: velocidad angular
         """
-        self.lock_odometry.acquire()
         if v == 0 and w == 0:
             # print("Parando motores")
             self.BP.set_motor_dps(self.PORT_MOTOR_IZQUIERDA, 0)
@@ -157,6 +156,7 @@ class Robot:
         self.BP.set_motor_dps(self.PORT_MOTOR_DERECHA, rad_to_deg(w_d))
         
         ## Actualizar los valores
+        self.lock_odometry.acquire()
         self.v.value = v
         self.w.value = w
         self.lock_odometry.release()
