@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     """ Speed calculation for tracking a target.
     :param x: x coordinate of the target
@@ -48,6 +49,31 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     # print("error_x: ", error_x)
     # print("v_adjusted: ", v_adjusted)
     # print("w_adjusted: ", w_adjusted)
+    
+    return v_adjusted, w_adjusted
+    
+def calcAngleSpeed(w, r, angle_distance, kp_angle=5):
+    
+    # Constantes para ajustar sensibilidad (cómo de lineal es la sigmoidal)
+
+    # Función sigmoid para suavizar la respuesta 
+    # k regula cómo de lineal es la sigmoid
+    def sigmoid(x, k=1):
+        return 1 / (1 + np.exp(-k * x))
+    
+
+    # Ajuste de velocidad angular (w) basado en error de ángulo
+    w_adjusted = (2* w * sigmoid(angle_distance, kp_angle) - (w))
+    
+    
+    v_adjusted =  abs(r * w_adjusted)
+    
+    
+    # if (abs(w_adjusted) < 0.33):
+    #     w_adjusted = 0
+    
+    print("w_initial ", w, "w_adjusted: ", w_adjusted, "angle_distance: ", 
+          angle_distance, "sigmoid", sigmoid(angle_distance, kp_angle))
     
     return v_adjusted, w_adjusted
 

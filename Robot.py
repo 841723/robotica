@@ -4,6 +4,7 @@ from __future__ import \
     print_function  # use python 3 syntax but make it compatible with python 2
 from __future__ import division
 
+import math
 import sys
 import time  # import the time library for the sleep function
 from multiprocessing import Lock, Process, Value
@@ -12,13 +13,12 @@ import brickpi3  # import the BrickPi3 drivers
 import cv2
 import numpy as np
 import picamera
-import math
-from lib.utils import deg_to_rad, norm_pi, rad_to_deg, c2m, polares, distancia_angular
-from lib.utilsrobot import calcSearchSpeed, calcTrackSpeed
 from lib.simubot import hom, loc
+from lib.utils import (c2m, deg_to_rad, distancia_angular, norm_pi, polares,
+                       rad_to_deg)
+from lib.utilsrobot import calcAngleSpeed, calcSearchSpeed, calcTrackSpeed
 from numpy.linalg import inv
 from picamera.array import PiRGBArray
-
 
 
 class Robot:
@@ -98,6 +98,7 @@ class Robot:
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
         self.rawCapture = None
 
+        self.ignore_small_w = Value('b', False)
         self.th_ini = Value('d',0.0)
 
         # If we want to block several instructions to be run together, we may want to use an explicit Lock
@@ -225,6 +226,10 @@ class Robot:
                 print("Error reading gyro sensor: ", error)
             return None
 
+    def set_ignore_small_w(self, ignore): 
+        self.lock_odometry.acquire() 
+        self.ignore_small_w.value = ignore
+        self.lock_odometry.release()
 
     def updateOdometry(self): 
         """This function will be run periodically to update the odometry values
@@ -252,7 +257,13 @@ class Robot:
                 w = self.R/self.L * (wDerecha - wIzquierda)
                 # Calcular la velocidad angular usando el giroscopio
                 
-    
+                
+                self.lock_odometry.acquire() 
+                
+                if self.ignore_small_w.value:
+                        if w < 0.3 and w > -0.3:
+                            w = 0
+                self.lock_odometry.release()
 
                 x_read, y_read, th_read = self.readOdometry()
                 dx, dy, new_th = 0, 0, 0
@@ -260,20 +271,14 @@ class Robot:
                     new_th = self.BP.get_sensor(self.PORT_GYRO)
                     new_th = norm_pi(deg_to_rad(-new_th[0])+self.th_ini.value)
                     
-                    # self.lock_odometry.acquire() # prev_th sólo usada por updateOdometry
-                    
-                    # w = self.angleDistance(self.prev_th.value, new_th) / self.P
+                    # prev_th sólo usada por updateOdometry
                     # w = self.angular_velocity(new_th, self.prev_th.value, self.P)
-                    if w < 0.3 and w > -0.3:
-                        w = 0
-                    # self.lock_odometry.release()
                     
                 except brickpi3.SensorError as error:
                     if self.verbose:
                         print("Error reading gyro sensor: ", error)
                     # Tomamos el ángulo de la odometría	
                     new_th = th_read + w*self.P
-                
                 
                 
                 if w == 0:
@@ -284,23 +289,23 @@ class Robot:
                     dy = -v/w*(np.cos(new_th) - np.cos(th_read))
 
                 self.lock_odometry.acquire()
-                self.x.value = x_read + dx
-                self.y.value = y_read + dy
+                self.x.value += dx
+                self.y.value += dy
                 # self.th.value = th_read + w*self.P # Using odometry
-                if w != 0:
-                    self.prev_th.value = self.th.value
-                    self.th.value = new_th
+                # if w != 0:
+                self.prev_th.value =th_read
+                self.th.value = new_th
                 self.v.value = v
                 self.w.value = w
+                self.lock_odometry.release()
                 
 
                 # save LOG
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
                     
-                print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                # print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
 
-                self.lock_odometry.release()
                 
             except IOError as error:
                 sys.stdout.write(error)
@@ -329,7 +334,7 @@ class Robot:
         return min(((th2 - th1 ) % (2*np.pi)), ((th1 - th2 ) % (2*np.pi)))
 
     
-    def waitAngle(self, ang_final, tolerancia=0.07):
+    def waitAngle(self, ang_final, tolerancia=0.05, initial_w=None, initial_R=0):
         """Waits until the robot reaches a specific angle with a given tolerance
         :param ang_final: desired angle in radians
         :param tolerancia: tolerance in radians 
@@ -354,7 +359,7 @@ class Robot:
             if self.verbose:
                 print("Angulo destino -->", ang_final , "; Angulo actual --> ", ang_actual, "; Error --> ", distancia_a_final)
             
-            if distancia_a_final > ultima_distancia :
+            if distancia_a_final > ultima_distancia: 
                 error_count += 1
                 if error_count > 3:
                     # If we are moving away from the desired angle, we stop
@@ -363,6 +368,10 @@ class Robot:
                     break
             else:
                 error_count = 0
+            
+            if initial_w is not None:
+                adjusted_v, adjusted_w = calcAngleSpeed(initial_w, initial_R, distancia_a_final)
+                self.setSpeed(adjusted_v, adjusted_w)
 
         self.setSpeed(0, 0)
         [_, _, ang_actual] = self.readOdometry()
@@ -406,7 +415,7 @@ class Robot:
             if self.verbose:
                 print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion, "velocidad:", self.v.value, "angular:", self.w.value)
             
-            if diferencia_posicion > diferencia_posicion_anterior:
+            if diferencia_posicion >= diferencia_posicion_anterior:
                 error_count += 1
                 if error_count > 2:
                     # If we are moving away from the desired position, we stop
@@ -716,6 +725,7 @@ class Robot:
         elif -np.pi/4 <= th < np.pi/4:  # Close to 0 radians 
             return 2  # Right
 
+
     def go_to_cell(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
         """ Mueve la entidad al objetivo. Comprueba si hay obstáculo y si lo hay, calibra la odometría y replanifica la ruta
             x_obj, y_obj: coordenadas del objetivo en m
@@ -738,22 +748,25 @@ class Robot:
             # Determinar la dirección del giro
             self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
 
-            self.waitAngle(angle)
+            self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.025)
             self.setSpeed(0,0)
             
-            
+        self.set_ignore_small_w(True)
+        
         x, y, th = self.readOdometry()
         if self.verbose:
             print("GO_T0 ODOMETRY: X --> {:.5f} y --> {:.5f} Ángulo --> {:.5f} rad --> {:.5f}".format(x, y, math.degrees(th), th))
             print("Moviéndose a la posición ", x_obj, ", ", y_obj)
         # return x, y, th, None
             
+        
         if(self.detect_obstacle()):
             if self.verbose:
                 print("Obstáculo detectado, calibramos odometría y replanificamos ruta...")
             self.calibrateOdometry()
             obstacle_direction = self.get_neighbor_from_angle(th)
             return x, y, th, obstacle_direction
+        
         
         self.setSpeed(v_base, 0)
         # self.waitPositionWithCorrection(x_obj, y_obj, v_base, w_base) #### NO FUNCIONA BIEN, PERO SE PUEDE PROBAR
@@ -766,6 +779,7 @@ class Robot:
         #     self.waitPosition(x_obj, y_obj)
         self.waitPosition(x_obj, y_obj)
         self.setSpeed(0,0)
+        
         x, y, th = self.readOdometry()
 
         # Para que calibre después de cada celda en caso de que encuentre un obstáculo
@@ -781,8 +795,10 @@ class Robot:
                     print("Obstáculo detectado en eje x, calibramos odometría de x hasta ", x_obj)
                 self.calibrateOdometry(expected_x=x_obj)
             
+        self.set_ignore_small_w(False)
 
         return x, y, th, None
+
 
     def get_light_sensor_value(self):
         """
@@ -875,8 +891,8 @@ class Robot:
             :param w_base: velocidad angular base
         """
         print("GO_TO_FREE")
-        w_max = 1.5
-        v_max = 0.4
+        w_max = 2
+        v_max = 1.5
         
         rho_max = 8.0
         alpha_max = np.pi
@@ -915,32 +931,33 @@ class Robot:
 
         if currentMap == 'A':        # 1. Giro 90 grados 
             self.setSpeed(0, -w_base)
-            self.waitAngle(-np.pi, tolerancia=angleTolerance)
+            self.waitAngle(-np.pi, tolerancia=angleTolerance, initial_w=-w_base)
             self.setSpeed(0, 0)
 
             # 2. Semicírculo radio d izquierda
             self.setSpeed(w_base * radioD, w_base)
-            self.waitAngle(0, tolerancia=angleTolerance)
+            self.waitAngle(0, tolerancia=angleTolerance, initial_w=w_base, initial_R=radioD)
             self.setSpeed(0, 0)
-
+            
+            
             # 3.1. Círculo radio d derecha
             self.setSpeed(w_base * radioD, -w_base)
-            self.waitAngle(-np.pi, tolerancia=angleTolerance)
+            self.waitAngle(-np.pi, tolerancia=angleTolerance, initial_w=-w_base, initial_R=radioD)
             self.setSpeed(0, 0)
 
         elif currentMap == 'B':
             self.setSpeed(0, w_base)
-            self.waitAngle(0, tolerancia=angleTolerance)
+            self.waitAngle(0, tolerancia=angleTolerance, initial_w=w_base)
             self.setSpeed(0, 0)
 
             # 2. Semicírculo radio d derecha
             self.setSpeed(w_base * radioD, -w_base)
-            self.waitAngle(-np.pi, tolerancia=angleTolerance)
+            self.waitAngle(-np.pi, tolerancia=angleTolerance, initial_w=-w_base, initial_R=radioD)
             self.setSpeed(0, 0)
 
             # 3.1. Círculo radio d izquierda
             self.setSpeed(w_base * radioD, w_base)
-            self.waitAngle(0, tolerancia=angleTolerance)
+            self.waitAngle(0, tolerancia=angleTolerance, initial_w=w_base, initial_R=radioD)
             self.setSpeed(0, 0)
     
 

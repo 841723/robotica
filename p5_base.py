@@ -2,17 +2,21 @@
 # -*- coding: UTF-8 -*-
 import argparse
 import os
-import numpy as np
 import time
-from Robot import Robot
-from alg_deteccion_lado import DecideSide
+
 import matplotlib
+import numpy as np
+from alg_deteccion_lado import DecideSide
+from Robot import Robot
+
 matplotlib.use("TkAgg")
 # sudo apt-get install tcl-dev tk-dev python-tk python3-tk if TkAgg is not available
 
+from enum import Enum
+
 # from Robot import Robot
 from lib.MapLib import Map2D
-from enum import Enum
+
 
 # Calibration using ultrasonic sensors
 def calibrate_before_maze(robot: Robot, side_to_calibrate, maze_ini_position, w_base=0.5):
@@ -25,13 +29,13 @@ def calibrate_before_maze(robot: Robot, side_to_calibrate, maze_ini_position, w_
     # robot.setSpeed(0, sign*w_base)
     # # robot.waitAngle(sign*np.pi/2)
     # robot.waitAngle(angle_to_reach)
-    robot.calibrateOdometry(number_of_cells=1)
+    robot.calibrateOdometry(distObj=55)
     robot.setSpeed(0, -sign*w_base)
-    robot.waitAngle(-np.pi/2)
+    robot.waitAngle(-np.pi/2, initial_w=-sign*w_base)
     print(robot.readOdometry())
     robot.setSpeed(0, 0)
     print(robot.readOdometry())
-    robot.calibrateOdometry(number_of_cells=2, 
+    robot.calibrateOdometry(distObj=85, 
                             expected_x = maze_ini_position[0], 
                             expected_y = maze_ini_position[1])
     robot.setSpeed(0, 0)
@@ -71,11 +75,14 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
         x += myMap.sizeCell/2000
         y += myMap.sizeCell/2000
         
-        x_act, y_act, th_act, direction = robot.go_to_cell(x, y)
+        x_act, y_act, th_act, direction = robot.go_to_cell_2(x, y)
+        
+
+
         # robotLocations.append([x_act*1000, y_act*1000, th_act])
-        print("Current cell: ", x_act, y_act)
-        print("Current angle: ", th_act)
-        print("Current position with ReadOdometry: ", robot.readOdometry())
+        # print("Current cell: ", x_act, y_act)
+        # print("Current angle: ", th_act)
+        # print("Current position with ReadOdometry: ", robot.readOdometry())
         if direction is not None:
             # Obstacle detected, replan the path
             if args.verbose:
@@ -118,22 +125,24 @@ def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/
     # Si está cerca de 0 giramos hacia 180 (para evitar que la cesta se choque con la pared)
     if th < np.pi/2 or th > -np.pi/2:
         robot.setSpeed(0, w_base)
-        robot.waitAngle(np.pi)
+        robot.waitAngle(np.pi, initial_w=w_base)
     else: 
         robot.setSpeed(0, -w_base)
-        robot.waitAngle(0)
+        robot.waitAngle(0, initial_w=-w_base)
         
     robot.setSpeed(0, 0)
-    robot.calibrateOdometry(distObj=73)
+    robot.calibrateOdometry(distObj=75)
     
     if th < np.pi/2 or th > -np.pi/2:
         robot.setSpeed(0, -w_base)
+        robot.waitAngle(np.pi/2, initial_w=-w_base)
     else:
         robot.setSpeed(0, w_base)
+        robot.waitAngle(np.pi/2, initial_w=w_base)
     
-    robot.waitAngle(np.pi/2)
+    
     robot.setSpeed(0, 0)
-    robot.calibrateOdometry(distObj=73, 
+    robot.calibrateOdometry(distObj=75, 
                             expected_x = center_calibrate_position[0], 
                             expected_y = center_calibrate_position[1]) 
     return
@@ -158,7 +167,8 @@ def main(args):
             
             'center_calibrate_position': (5*.4, 5*.4),
             'l_position_x': 3*.4+.2,
-            'r_position_x': 6*.4+.2
+            'r_position_x': 6*.4+.2,
+            'robot' : 'R2D2'
         },
         'B' :{
             'map_file': args.mapfileB,
@@ -177,6 +187,7 @@ def main(args):
             'center_calibrate_position': (2*.4, 5*.4),
             'l_position_x': 0+.2,
             'r_position_x': 3*.4+.2,
+            'robot' : 'BB8'
         }
     }
     try:
@@ -191,11 +202,11 @@ def main(args):
         
         map_config = _map[starting_position]
         map_config.update({
-            's_w_base': np.pi/6,
+            's_w_base': np.pi/4,
             's_radioD': 0.4,
             
             'initial_angle': -np.pi/2,
-            'final_position_y': 7*.4,
+            'final_position_y': 7*.4 + .2,
             'final_position_th': np.pi/2,
 
             'ball_v_base': 0.2,
@@ -221,7 +232,7 @@ def main(args):
         map_images = {
             'A': './fotos/BB8_s.png',
             'B': './fotos/R2-D2_s.png',
-            'robot': 'BB8'
+            'robot': map_config['robot']
         }
         
 

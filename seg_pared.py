@@ -2,17 +2,21 @@
 # -*- coding: UTF-8 -*-
 import argparse
 import os
-import numpy as np
 import time
-from Robot import Robot
-from alg_deteccion_lado import DecideSide
+
 import matplotlib
+import numpy as np
+from alg_deteccion_lado import DecideSide
+from Robot import Robot
+
 matplotlib.use("TkAgg")
 # sudo apt-get install tcl-dev tk-dev python-tk python3-tk if TkAgg is not available
 
+from enum import Enum
+
 # from Robot import Robot
 from lib.MapLib import Map2D
-from enum import Enum
+
 
 def pruebaBaldosasOdometria(robot, v_base, num_baldosas):
     TAMANO_BALDOSA = 0.4
@@ -181,8 +185,8 @@ def main(args):
         
         robot.waitPositionWithWallCorrection(
             0,
-            1.5,
-            v_base=0.1,
+            1.2,
+            v_base=0.3,
         )
         
         
