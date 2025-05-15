@@ -770,7 +770,7 @@ class Robot:
 
             self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.05)
             self.setSpeed(0,0)
-        elif abs(angle_diff) > 0.02:
+        elif abs(angle_diff) > 0.01:
             if self.verbose:
                 print("Recalibrando a ", math.degrees(angle), "grados")
             # Determinar la dirección del giro

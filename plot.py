@@ -69,19 +69,25 @@ if __name__ == "__main__":
                 del coord_def[i][3:]
 
 
-    if len(sys.argv) > 3 :
-        for coordenada in coord_def:
-            plt.plot(coordenada[0],coordenada[1],"o")
-    else:
-        for coordenada in coord_def:
-            if coordenada[0] != "#":
-                dibrobot([
-                    coordenada[0],
-                    coordenada[1],
-                    coordenada[2]
-                ],'red','p')
-                
-    escenario(a=True)
+    # if len(sys.argv) > 3 :
+    #     for coordenada in coord_def:
+    #         plt.plot(coordenada[0],coordenada[1],"o")
+    # else:
+    for coordenada in coord_def:
+        if coordenada[0] != "#":
+            dibrobot([
+                coordenada[0],
+                coordenada[1],
+                coordenada[2]
+            ],'red','p')
+            
+    print(sys.argv) 
+    if len(sys.argv) > 2:
+        if sys.argv[2] == "a":
+            escenario(True)
+        else:
+            escenario(False)
+            
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(False)
     plt.title('Simulación del Movimiento del Robot')

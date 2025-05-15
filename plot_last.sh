@@ -4,4 +4,4 @@
 recent_log=$(ls -t log/*.log | head -n 1)
 
 # Run the Python command with the most recent log file as a parameter
-python plot.py "$recent_log"
+python plot.py "$recent_log" "$1"
