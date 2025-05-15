@@ -308,8 +308,13 @@ def main(args):
         
         side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
         
+        
+        # side = "l"
+
+        
         if side is None:
             side = "l"
+        # robot.catch()
         
         print("Decide side: %s" % side)
         # robot.setSpeed(0, 0)
@@ -319,8 +324,10 @@ def main(args):
             # robot.setSpeed(0, 0)
             print("Going left x:", 
                   ['l_position_x'])
+            print("Actual position: ", robot.readOdometry())
+            print("Velocity: ", map_config['s_w_base'])
             robot.setSpeed(0, map_config['s_w_base'])
-            robot.waitAngle(3*np.pi/4, initial_w=-map_config['s_w_base'])
+            robot.waitAngle(3*np.pi/4, initial_w=map_config['s_w_base'])
             robot.go_to_free(
                 x_obj=map_config['l_position_x'],
                 y_obj=map_config['final_position_y'],
@@ -335,16 +342,16 @@ def main(args):
             print("Actual position: ", actual_x, actual_y, actual_th)
             if actual_th < np.pi/2:
                 robot.setSpeed(0, 0.5)
-                robot.waitAngle(np.pi/2, initial_w=-map_config['s_w_base']) 
+                robot.waitAngle(np.pi/2, initial_w=0.5, tolerancia=0.01) 
             else:
                 robot.setSpeed(0, -0.5)
-                robot.waitAngle(np.pi/2, initial_w=map_config['s_w_base'])
+                robot.waitAngle(np.pi/2, initial_w=-0.5,  tolerancia=0.01)
             
             # robot.calibrateOdometry(distObj=125, expected_y=actual_y-0.4)
             robot.setSpeed(0, -map_config['s_w_base'])
-            robot.waitAngle(0, initial_w=-map_config['s_w_base'])
+            robot.waitAngle(0, initial_w=-map_config['s_w_base'],  tolerancia=0.07)
             robot.setSpeed(0, 0)
-            robot.calibrateOdometry(distObj=30, expected_x=map_config['r_position_x']-0.2)
+            robot.calibrateOdometry(distObj=20, expected_x=map_config['r_position_x']-0.1)
             robot.setSpeed(0, map_config['s_w_base'])
             robot.waitAngle(np.pi/2, initial_w=map_config['s_w_base'])
             robot.setSpeed(0, 0)

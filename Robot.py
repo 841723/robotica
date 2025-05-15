@@ -304,7 +304,7 @@ class Robot:
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
                     
-                # print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
 
                 
             except IOError as error:
@@ -356,8 +356,8 @@ class Robot:
             [_, _, ang_actual] = self.readOdometry()
             distancia_a_final = self.angleDistance(ang_final, ang_actual)
 
-            if self.verbose:
-                print("Angulo destino -->", ang_final , "; Angulo actual --> ", ang_actual, "; Error --> ", distancia_a_final)
+            # if self.verbose:
+            #     print("Angulo destino -->", ang_final , "; Angulo actual --> ", ang_actual, "; Error --> ", distancia_a_final)
             
             if distancia_a_final > ultima_distancia: 
                 error_count += 1
@@ -366,6 +366,8 @@ class Robot:
                     if self.verbose:
                         print("Error aumentando", distancia_a_final, "; es mayor que", ultima_distancia)
                     break
+            elif distancia_a_final == ultima_distancia:
+                continue
             else:
                 error_count = 0
             
