@@ -304,7 +304,7 @@ class Robot:
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
                     
-                print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                # print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
 
                 
             except IOError as error:
@@ -767,7 +767,7 @@ class Robot:
 
             self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.025)
             self.setSpeed(0,0)
-        elif abs(angle_diff) > 0.02:
+        elif abs(angle_diff) > 0.01:
             if self.verbose:
                 print("Recalibrando a ", math.degrees(angle), "grados")
             # Determinar la dirección del giro

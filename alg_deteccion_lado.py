@@ -28,7 +28,7 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
     # 2. Toma de foto
     found_bb8 = False
     found_r2d2 = False
-    while not found_bb8 and not found_r2d2:
+    while not found_bb8 or not found_r2d2:
         img = robot.takePhoto()
         img = cv2.rotate(img, cv2.ROTATE_180)
         # 3. Match images
@@ -37,6 +37,8 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
         
         bb8_center, found_bb8 = sample_matching.match_images(bb8, img)
         r2d2_center, found_r2d2 = sample_matching.match_images(r2d2, img)
+        print("BB8 found: %s" % found_bb8)
+        print("R2D2 found: %s" % found_r2d2)
         # 4. Decide side
         if found_bb8 and found_r2d2:
             if bb8_center[0] < r2d2_center[0]:
@@ -53,12 +55,12 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
         _,_,th = robot.readOdometry()
         
         if th > np.pi/2:
-            robot.setSpeed(0, -0.2)
-            robot.waitAngle(np.pi/2)
+            robot.setSpeed(0, -0.5)
+            robot.waitAngle(np.pi/2, initial_w = -0.2)
         else:
-            robot.setSpeed(0, 0.2)
-            robot.waitAngle(np.pi/2)
-        
+            robot.setSpeed(0, 0.5)
+            robot.waitAngle(np.pi/2, initial_w = 0.2)
+        robot.setSpeed(0, 0)
         robot.setSpeed(0.2, 0)
         time.sleep(robot.P)
         robot.setSpeed(0, 0)
