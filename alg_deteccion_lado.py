@@ -49,6 +49,15 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
                     return "r"
                 else:
                     return "l"
+                
+        _,_,th = robot.readOdometry()
+        
+        if th > np.pi/2:
+            robot.setSpeed(0, -0.2)
+            robot.waitAngle(np.pi/2)
+        else:
+            robot.setSpeed(0, 0.2)
+            robot.waitAngle(np.pi/2)
         
         robot.setSpeed(0.2, 0)
         time.sleep(robot.P)
@@ -59,18 +68,18 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
             break
         
     
-    if found_bb8 and bb8_center[0] < img.shape[1] / 2:
-        print("BB8 found on the left")
-        if robot_deciding == "BB8":
-            return "l"
-        else:
-            return "r"
-    elif found_r2d2 and r2d2_center[0] < img.shape[1] / 2:
-        print("R2D2 found on the left")
-        if robot_deciding == "BB8":
-            return "r"
-        else:
-            return "l"
+    # if found_bb8 and bb8_center[0] < img.shape[1] / 2:
+    #     print("BB8 found on the left")
+    #     if robot_deciding == "BB8":
+    #         return "l"
+    #     else:
+    #         return "r"
+    # elif found_r2d2 and r2d2_center[0] < img.shape[1] / 2:
+    #     print("R2D2 found on the left")
+    #     if robot_deciding == "BB8":
+    #         return "r"
+    #     else:
+    #         return "l"
         
     return None
         
