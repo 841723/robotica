@@ -304,7 +304,7 @@ class Robot:
                 with open(self.log_filename, "a") as f:
                     f.write("%.2f,%.2f,%.2f,%.2f,%.2f\n" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
                     
-                print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
+                # print ("X --> %.2f, Y --> %.2f, th --> %.2f, v --> %.2f, w --> %.2f" % (self.x.value, self.y.value, self.th.value, self.v.value, self.w.value))
 
                 
             except IOError as error:
@@ -438,7 +438,7 @@ class Robot:
         
         return
 
-    def waitPositionWithWallCorrection(self, x_deseado, y_deseado, v_base=0.1, tolerancia=0.02):
+    def waitPositionWithWallCorrection(self, x_deseado, y_deseado, v_base=0.1, tolerancia=0.02, marcha_atras=False):
         """Waits until the robot reaches a specific position with a given tolerance and corrects the position
         :param x_deseado: desired x position
         :param y_deseado: desired y position
@@ -504,6 +504,9 @@ class Robot:
             d1 = d1/100.0
             dD = d1 - d
             d = d1
+            if marcha_atras:
+                # If we are moving backwards, we need to change the sign of the angular speed
+                w_c = -w_c
             self.setSpeed(v_base, w_c)
             
                 
@@ -743,7 +746,7 @@ class Robot:
             return 2  # Right
 
 
-    def go_to_cell(self, x_obj, y_obj, v_base=0.1, w_base=np.pi/4):
+    def go_to_cell(self, x_obj, y_obj, v_base=0.2, w_base=np.pi/2):
         """ Mueve la entidad al objetivo. Comprueba si hay obstáculo y si lo hay, calibra la odometría y replanifica la ruta
             x_obj, y_obj: coordenadas del objetivo en m
         """        
@@ -765,7 +768,7 @@ class Robot:
             # Determinar la dirección del giro
             self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
 
-            self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.025)
+            self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.05)
             self.setSpeed(0,0)
         elif abs(angle_diff) > 0.02:
             if self.verbose:
@@ -773,7 +776,7 @@ class Robot:
             # Determinar la dirección del giro
             self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
 
-            self.waitAngle(angle, initial_w=None, tolerancia=0.02)
+            self.waitAngle(angle, initial_w=None, tolerancia=0.04)
             self.setSpeed(0,0)
 
         self.set_ignore_small_w(True)
@@ -953,7 +956,7 @@ class Robot:
         assert currentMap == 'A' or currentMap == 'B', "Mapa no válido"
 
         radioD = 0.4
-        angleTolerance = 0.03
+        angleTolerance = 0.09
 
         if currentMap == 'A':        # 1. Giro 90 grados 
             self.setSpeed(0, -w_base)
@@ -1002,9 +1005,9 @@ class Robot:
         distance = self.get_obstacle_distance()
         
         while (abs(distObj - distance)) > distanceError:
-            # if self.verbose:
-            #     print("Distancia al objeto: ", distance, "cm", 
-            #           " Diferencia de ", distObj - distance, "cm")
+            if self.verbose:
+                print("Distancia al objeto: ", distance, "cm", 
+                      " Diferencia de ", distObj - distance, "cm")
 
             if (distObj - distance) > 0:
                 self.setSpeed(-0.1,0)

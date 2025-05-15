@@ -52,7 +52,7 @@ def calcTrackSpeed(x, area, targetX, minObjectiveSize, maxObjectiveSize, v, w):
     
     return v_adjusted, w_adjusted
     
-def calcAngleSpeed(w, r, angle_distance, kp_angle=5):
+def calcAngleSpeed(w, r, angle_distance, kp_angle=10):
     
     # Constantes para ajustar sensibilidad (cómo de lineal es la sigmoidal)
 

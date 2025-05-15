@@ -28,12 +28,12 @@ def DecideSide(robot, bb8, r2d2, robot_deciding):
     # 2. Toma de foto
     found_bb8 = False
     found_r2d2 = False
-    while not found_bb8 and not found_r2d2:
+    bb8 = cv2.imread(bb8, cv2.IMREAD_COLOR)
+    r2d2 = cv2.imread(r2d2, cv2.IMREAD_COLOR)
+    while not found_bb8 or not found_r2d2:
         img = robot.takePhoto()
         img = cv2.rotate(img, cv2.ROTATE_180)
         # 3. Match images
-        bb8 = cv2.imread(bb8, cv2.IMREAD_COLOR)
-        r2d2 = cv2.imread(r2d2, cv2.IMREAD_COLOR)
         
         bb8_center, found_bb8 = sample_matching.match_images(bb8, img)
         r2d2_center, found_r2d2 = sample_matching.match_images(r2d2, img)

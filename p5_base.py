@@ -123,22 +123,39 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
 def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/6):
     _, _, th = robot.readOdometry()
     # Si está cerca de 0 giramos hacia 180 (para evitar que la cesta se choque con la pared)
-    if th < np.pi/2 or th > -np.pi/2:
-        robot.setSpeed(0, w_base)
-        robot.waitAngle(0, initial_w=w_base)
+    side = ""
+    print("Current angle before recognition: ", th)
+    if abs(th) < np.pi/2:
+        if th < np.pi/2 and th > 0:
+            print("girando a la derecha para alcanzar 0")
+            robot.setSpeed(0, -w_base)
+            robot.waitAngle(0, initial_w=-w_base, tolerancia=0.08)
+            lado = "r"
+        else:
+            print("girando a la izquierda para alcanzar 0")
+            robot.setSpeed(0, w_base)
+            robot.waitAngle(0, initial_w=w_base, tolerancia=0.08)
+            lado = "r"
     else: 
-        robot.setSpeed(0, -w_base)
-        robot.waitAngle(np.pi, initial_w=-w_base)
-        
+        if th < 0:
+            print("girando a la derecha para alcanzar 0")
+            robot.setSpeed(0, -w_base)
+            robot.waitAngle(-np.pi, initial_w=-w_base, tolerancia=0.08)
+            lado = "l"
+        else:
+            print("girando a la izquierda para alcanzar 0")
+            robot.setSpeed(0, w_base)
+            robot.waitAngle(np.pi, initial_w=w_base, tolerancia=0.08)
+            lado = "l"
     robot.setSpeed(0, 0)
     robot.calibrateOdometry(distObj=75)
     
-    if th < np.pi/2 or th > -np.pi/2:
+    if lado == "l":
         robot.setSpeed(0, -w_base)
-        robot.waitAngle(np.pi/2, initial_w=-w_base)
+        robot.waitAngle(np.pi/2, initial_w=-w_base, tolerancia=0.08)
     else:
         robot.setSpeed(0, w_base)
-        robot.waitAngle(np.pi/2, initial_w=w_base)
+        robot.waitAngle(np.pi/2, initial_w=w_base, tolerancia=0.08)
     
     
     robot.setSpeed(0, 0)
@@ -204,7 +221,7 @@ def main(args):
         
         map_config = _map[starting_position]
         map_config.update({
-            's_w_base': np.pi/4,
+            's_w_base': np.pi/3,
             's_radioD': 0.4,
             
             'initial_angle': -np.pi/2,
@@ -253,6 +270,7 @@ def main(args):
             map_config['initial_position'][0], 
             map_config['initial_position'][1], 
             map_config['initial_angle']
+            # np.pi/2
         ) 
 
         robot.startOdometry()
@@ -309,7 +327,6 @@ def main(args):
         side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
         
         
-        # side = "l"
 
         
         if side is None:
@@ -322,17 +339,34 @@ def main(args):
             # robot.setSpeed(0, map_config['s_w_base'])
             # robot.waitAngle(3*np.pi/4)
             # robot.setSpeed(0, 0)
-            print("Going left x:", 
-                  ['l_position_x'])
-            print("Actual position: ", robot.readOdometry())
-            print("Velocity: ", map_config['s_w_base'])
+            # print("Going left x:", 
+            #       ['l_position_x'])
+            # print("Actual position: ", robot.readOdometry())
+            # print("Velocity: ", map_config['s_w_base'])
+            # robot.setSpeed(0, map_config['s_w_base'])
+            # robot.waitAngle(3*np.pi/4, initial_w=map_config['s_w_base'])
+            # robot.go_to_free(
+            #     x_obj=map_config['l_position_x'],
+            #     y_obj=map_config['final_position_y'],
+            #     th_obj=map_config['final_position_th']
             robot.setSpeed(0, map_config['s_w_base'])
-            robot.waitAngle(3*np.pi/4, initial_w=map_config['s_w_base'])
-            robot.go_to_free(
-                x_obj=map_config['l_position_x'],
-                y_obj=map_config['final_position_y'],
-                th_obj=map_config['final_position_th']
+            robot.waitAngle(np.pi, initial_w=map_config['s_w_base'],  tolerancia=0.07)
+            robot.setSpeed(0, 0)
+            robot.calibrateOdometry(distObj=20, expected_x=map_config['l_position_x']+0.1)
+            robot.setSpeed(0, map_config['s_w_base'])
+            robot.waitAngle(-np.pi/2, initial_w=map_config['s_w_base'])
+            robot.setSpeed(0, 0)
+            v_base = 0.2
+            robot.setSpeed(-v_base, 0)
+            robot.waitPositionWithWallCorrection(
+                x_deseado=map_config['r_position_x'],
+                y_deseado=map_config['final_position_y'],
+                v_base=-v_base,
+                tolerancia=0.04,
+                marcha_atras=True,
             )
+            time.sleep(0.3)
+            robot.setSpeed(0, 0)
         else:
             # robot.setSpeed(0, -map_config['s_w_base'])
             # robot.waitAngle(np.pi/4)
