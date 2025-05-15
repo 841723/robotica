@@ -27,7 +27,7 @@ letter_s = 115
 MAX_FEATURES = 500
 # REQUIRED number of correspondences (matches) found:
 MIN_MATCH_COUNT=20          # initially
-MIN_MATCH_OBJECTFOUND=12    # after robust check, to consider object-found
+MIN_MATCH_OBJECTFOUND=8    # after robust check, to consider object-found
 
 
 def drawMatches2(img1, kp1, img2, kp2, matches, color=None, thickness = 2, mask=None): 

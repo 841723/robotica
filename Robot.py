@@ -497,7 +497,7 @@ class Robot:
                 print("Setting speed: v --> %.2f; w --> %.2f" % (v_base, w_c))
             
             d1 = self.get_side_obstacle_distance()
-            if d1 > 100.0:
+            if d1 > 80.0:
                 break
             d1 = d1/100.0
             dD = d1 - d

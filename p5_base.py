@@ -125,10 +125,10 @@ def calibrate_before_recognition(robot, center_calibrate_position, w_base=np.pi/
     # Si está cerca de 0 giramos hacia 180 (para evitar que la cesta se choque con la pared)
     if th < np.pi/2 or th > -np.pi/2:
         robot.setSpeed(0, w_base)
-        robot.waitAngle(np.pi, initial_w=w_base)
+        robot.waitAngle(0, initial_w=w_base)
     else: 
         robot.setSpeed(0, -w_base)
-        robot.waitAngle(0, initial_w=-w_base)
+        robot.waitAngle(np.pi, initial_w=-w_base)
         
     robot.setSpeed(0, 0)
     robot.calibrateOdometry(distObj=75)
@@ -308,13 +308,17 @@ def main(args):
         
         side = DecideSide(robot, map_images['A'], map_images['B'], map_images['robot'])
         
+        if side is None:
+            side = "l"
+        
         print("Decide side: %s" % side)
         # robot.setSpeed(0, 0)
         if side == "l":
             # robot.setSpeed(0, map_config['s_w_base'])
             # robot.waitAngle(3*np.pi/4)
             # robot.setSpeed(0, 0)
-            print("Going left x:", map_config['l_position_x'])
+            print("Going left x:", 
+                  ['l_position_x'])
             robot.setSpeed(0, map_config['s_w_base'])
             robot.waitAngle(3*np.pi/4, initial_w=-map_config['s_w_base'])
             robot.go_to_free(
@@ -350,7 +354,7 @@ def main(args):
                 x_deseado=map_config['r_position_x'],
                 y_deseado=map_config['final_position_y'],
                 v_base=v_base,
-                tolerancia=0.02
+                tolerancia=0.04,
             )
             robot.setSpeed(0, 0)
             # robot.go_to_free(
