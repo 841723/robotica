@@ -348,7 +348,7 @@ class Robot:
 
         while distancia_a_final > tolerancia: 
             ultima_distancia = distancia_a_final
-            t_siguiente += self.P
+            t_siguiente += 0.01
             t_actual = time.time()
             if t_siguiente > t_actual:
                 time.sleep(t_siguiente - time.time())
@@ -382,7 +382,7 @@ class Robot:
         return
             
         
-    def waitPosition(self, x_deseado, y_deseado, tolerancia=0.03):
+    def waitPosition(self, x_deseado, y_deseado, tolerancia=0.03, eje=None):
         """Waits until the robot reaches a specific position with a given tolerance
         :param x_deseado: desired x position
         :param y_deseado: desired y position
@@ -394,7 +394,11 @@ class Robot:
         t_siguiente = time.time()
         [x_actual, y_actual, th_actual] = self.readOdometry()
         
-        diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+        if eje is not None:
+            diferencia_posicion = abs(x_deseado - x_actual) if eje == "x" else abs(y_deseado - y_actual)
+        else:    
+            diferencia_posicion = np.sqrt((x_deseado - x_actual)**2 + (y_deseado - y_actual)**2)
+
         if self.verbose:
             print("Posición inicial:", x_actual, y_actual)
             print("Esperando hasta alcanzar:", x_deseado, y_deseado)
@@ -404,7 +408,7 @@ class Robot:
 
         while diferencia_posicion > tolerancia:
             diferencia_posicion_anterior = diferencia_posicion
-            t_siguiente += self.P
+            t_siguiente += 0.01
             t_actual = time.time()
             if t_siguiente > t_actual:
                 time.sleep(t_siguiente - time.time())
@@ -415,12 +419,16 @@ class Robot:
             if self.verbose:
                 print("Posición actual:", x_actual, y_actual, th_actual, "Error:", diferencia_posicion, "velocidad:", self.v.value, "angular:", self.w.value)
             
-            if diferencia_posicion >= diferencia_posicion_anterior:
+            if diferencia_posicion > diferencia_posicion_anterior:
                 error_count += 1
                 if error_count > 2:
                     # If we are moving away from the desired position, we stop
                     print("Error aumentando", diferencia_posicion, "; es mayor que", diferencia_posicion_anterior)
                     break
+            elif diferencia_posicion == diferencia_posicion_anterior:
+                continue
+            else:
+                error_count = 0
                 
         if self.verbose:
             print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
@@ -445,7 +453,7 @@ class Robot:
         d = self.get_side_obstacle_distance()
         ## pass from cm to m
         d = d/100.0
-        k1=1.5
+        k1=0.5
         k2=-30.0
         
         
@@ -473,10 +481,12 @@ class Robot:
             
             if diferencia_posicion > diferencia_posicion_anterior:
                 error_count += 1
-                if error_count > 0:
+                if error_count > 2:
                     # If we are moving away from the desired position, we stop
                     print("Error aumentando", diferencia_posicion, "; es mayor que", diferencia_posicion_anterior)
                     break
+            else:
+                error_count = 0
                 
             w = k1 * (d_min - d) + k2* dD
             if w > 0:
@@ -487,6 +497,8 @@ class Robot:
                 print("Setting speed: v --> %.2f; w --> %.2f" % (v_base, w_c))
             
             d1 = self.get_side_obstacle_distance()
+            if d1 > 100.0:
+                break
             d1 = d1/100.0
             dD = d1 - d
             d = d1
@@ -496,6 +508,8 @@ class Robot:
         if self.verbose:
             print("Posición deseada:", x_deseado, y_deseado, "Posición alcanzada:", x_actual, y_actual)
             print("Error:", diferencia_posicion)
+        
+        return
     
     def catch(self):
         """Lowers the basket to catch the ball
@@ -609,7 +623,7 @@ class Robot:
         return delta_theta / dt
 
 
-    def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True, targetX=160, minObjectiveTargetSize=4500, maxObjectiveTargetSize=8500, detection_tolerance=30, maxYValue=32, colorMasks=None):
+    def trackObject(self, v_base=0.4, w_base=np.pi/2, catch=True, targetX=160, minObjectiveTargetSize=4500, maxObjectiveTargetSize=8500, detection_tolerance=30, maxYValue=32, colorMasks=None, starting_w=None):
         """
         Tracks the ball and tries to catch it. The robot will move towards the ball until it is in the objective area
         and then it will try to catch it. If the catch is successful, the robot will stop. If the catch is not
@@ -623,13 +637,14 @@ class Robot:
         :param detection_tolerance: tolerance in the x position of the ball
         :param maxYValue: maximum y position of the ball
         :param colorMasks: list of color masks to detect the ball
+        :param starting_w: initial sign of the angular speed
         """
         self.init_camera()
         finished = False
         ball_caught = False
         ### Tracking parameters
-        last_error = 1 # positive or negative to know the direction of the error
-
+        # positive or negative to know the direction of the error
+        last_error = -1 if starting_w is "right" else 1
 
         self.release() # Check if the basket is up
 
@@ -750,7 +765,15 @@ class Robot:
 
             self.waitAngle(angle, initial_w=w_base if angle_diff > 0 else -w_base, tolerancia=0.025)
             self.setSpeed(0,0)
-            
+        elif abs(angle_diff) > 0.02:
+            if self.verbose:
+                print("Recalibrando a ", math.degrees(angle), "grados")
+            # Determinar la dirección del giro
+            self.setSpeed(0, w_base if angle_diff > 0 else -w_base)
+
+            self.waitAngle(angle, initial_w=None, tolerancia=0.02)
+            self.setSpeed(0,0)
+
         self.set_ignore_small_w(True)
         
         x, y, th = self.readOdometry()
@@ -765,6 +788,7 @@ class Robot:
                 print("Obstáculo detectado, calibramos odometría y replanificamos ruta...")
             self.calibrateOdometry()
             obstacle_direction = self.get_neighbor_from_angle(th)
+            self.set_ignore_small_w(False)
             return x, y, th, obstacle_direction
         
         
@@ -777,7 +801,7 @@ class Robot:
         #     self.waitPositionWithWallCorrection(x_obj, y_obj, v_base=v_base)
         # else:
         #     self.waitPosition(x_obj, y_obj)
-        self.waitPosition(x_obj, y_obj)
+        self.waitPosition(x_obj, y_obj, eje='x' if angle == 0 or angle == np.pi else 'y', tolerancia=0.02)
         self.setSpeed(0,0)
         
         x, y, th = self.readOdometry()
@@ -891,8 +915,8 @@ class Robot:
             :param w_base: velocidad angular base
         """
         print("GO_TO_FREE")
-        w_max = 2
-        v_max = 1.5
+        w_max = 1.5
+        v_max = 0.4
         
         rho_max = 8.0
         alpha_max = np.pi
@@ -901,7 +925,7 @@ class Robot:
         kp, ka, kb = v_max/rho_max, w_max/alpha_max, w_max/beta_max
         kp = 0.25
         ka = 1.5
-        kb = 0.8
+        kb = .8
         K = [[kp,0,0],[0,ka,kb]]
 
         wXr = self.readOdometry()
@@ -931,7 +955,7 @@ class Robot:
 
         if currentMap == 'A':        # 1. Giro 90 grados 
             self.setSpeed(0, -w_base)
-            self.waitAngle(-np.pi, tolerancia=angleTolerance, initial_w=-w_base)
+            self.waitAngle(-np.pi, tolerancia=angleTolerance, initial_w=-w_base)            
             self.setSpeed(0, 0)
 
             # 2. Semicírculo radio d izquierda
@@ -947,7 +971,7 @@ class Robot:
 
         elif currentMap == 'B':
             self.setSpeed(0, w_base)
-            self.waitAngle(0, tolerancia=angleTolerance, initial_w=w_base)
+            self.waitAngle(0, tolerancia=angleTolerance, initial_w=w_base)            
             self.setSpeed(0, 0)
 
             # 2. Semicírculo radio d derecha

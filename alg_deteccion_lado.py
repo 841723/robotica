@@ -26,29 +26,54 @@ def giro30gradosDerecha(robot, w_base, lado = "r"):
     
 def DecideSide(robot, bb8, r2d2, robot_deciding):
     # 2. Toma de foto
-    img = robot.takePhoto()
-    img = cv2.rotate(img, cv2.ROTATE_180)
-    # 3. Match images
-    bb8 = cv2.imread(bb8, cv2.IMREAD_COLOR)
-    r2d2 = cv2.imread(r2d2, cv2.IMREAD_COLOR)
-    
-    bb8_center, found_bb8 = sample_matching.match_images(bb8, img)
-    r2d2_center, found_r2d2 = sample_matching.match_images(r2d2, img)
-    
-    # 4. Decide side
-    if found_bb8 and found_r2d2:
-        if bb8_center[0] < r2d2_center[0]:
-            if robot_deciding == "BB8":
-                return "l"
+    found_bb8 = False
+    found_r2d2 = False
+    while not found_bb8 and not found_r2d2:
+        img = robot.takePhoto()
+        img = cv2.rotate(img, cv2.ROTATE_180)
+        # 3. Match images
+        bb8 = cv2.imread(bb8, cv2.IMREAD_COLOR)
+        r2d2 = cv2.imread(r2d2, cv2.IMREAD_COLOR)
+        
+        bb8_center, found_bb8 = sample_matching.match_images(bb8, img)
+        r2d2_center, found_r2d2 = sample_matching.match_images(r2d2, img)
+        # 4. Decide side
+        if found_bb8 and found_r2d2:
+            if bb8_center[0] < r2d2_center[0]:
+                if robot_deciding == "BB8":
+                    return "l"
+                else:
+                    return "r"
             else:
-                return "r"
+                if robot_deciding == "BB8":
+                    return "r"
+                else:
+                    return "l"
+        
+        robot.setSpeed(0.2, 0)
+        time.sleep(robot.P)
+        robot.setSpeed(0, 0)
+        if robot.get_obstacle_distance() < 0.15:
+            robot.setSpeed(0, 0)
+            print("Obstacle detected, stopping")
+            break
+        
+    
+    if found_bb8 and bb8_center[0] < img.shape[1] / 2:
+        print("BB8 found on the left")
+        if robot_deciding == "BB8":
+            return "l"
         else:
-            if robot_deciding == "BB8":
-                return "r"
-            else:
-                return "l"
-    else:
-        "Error: No se encontraron las imágenes de BB8 y R2D2 en la foto tomada."        
+            return "r"
+    elif found_r2d2 and r2d2_center[0] < img.shape[1] / 2:
+        print("R2D2 found on the left")
+        if robot_deciding == "BB8":
+            return "r"
+        else:
+            return "l"
+        
+    return None
+        
     
             
             

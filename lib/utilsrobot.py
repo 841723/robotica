@@ -72,8 +72,8 @@ def calcAngleSpeed(w, r, angle_distance, kp_angle=5):
     # if (abs(w_adjusted) < 0.33):
     #     w_adjusted = 0
     
-    print("w_initial ", w, "w_adjusted: ", w_adjusted, "angle_distance: ", 
-          angle_distance, "sigmoid", sigmoid(angle_distance, kp_angle))
+    # print("w_initial ", w, "w_adjusted: ", w_adjusted, "angle_distance: ", 
+        #   angle_distance, "sigmoid", sigmoid(angle_distance, kp_angle))
     
     return v_adjusted, w_adjusted
 

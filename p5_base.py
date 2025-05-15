@@ -35,7 +35,7 @@ def calibrate_before_maze(robot: Robot, side_to_calibrate, maze_ini_position, w_
     print(robot.readOdometry())
     robot.setSpeed(0, 0)
     print(robot.readOdometry())
-    robot.calibrateOdometry(distObj=85, 
+    robot.calibrateOdometry(distObj=95, 
                             expected_x = maze_ini_position[0], 
                             expected_y = maze_ini_position[1])
     robot.setSpeed(0, 0)
@@ -75,7 +75,7 @@ def solve_maze(robot: Robot, map_file, maze_ini_x, maze_ini_y,
         x += myMap.sizeCell/2000
         y += myMap.sizeCell/2000
         
-        x_act, y_act, th_act, direction = robot.go_to_cell_2(x, y)
+        x_act, y_act, th_act, direction = robot.go_to_cell(x, y)
         
 
 
@@ -160,8 +160,9 @@ def main(args):
             'maze_ini_position': (1*.4+.2, 2*.4+.2),
             'maze_end_x': 3,
             'maze_end_y': 3,
+            'sign': -1,
 
-            'initial_position': (0.6,3),
+            'initial_position': (0.6,2.6),
 
             'side_to_calibrate': "right",
             
@@ -179,6 +180,7 @@ def main(args):
             'maze_ini_position': (5*.4+.2, 2*.4+.2),
             'maze_end_x': 3,
             'maze_end_y': 3,
+            'sign': 1,
 
             'initial_position': (2.2,2.6),
 
@@ -296,24 +298,11 @@ def main(args):
             maxObjectiveTargetSize=map_config['ball_maxObjectiveTargetSize'],
             detection_tolerance=map_config['ball_detection_tolerance'],
             maxYValue=map_config['ball_maxYValue'],
-            colorMasks=map_config['ball_colorMasks'][args.mask]
+            colorMasks=map_config['ball_colorMasks'][args.mask],
+            starting_w=map_config['side_to_calibrate']
         )
 
-
-        # exit the circuit
-        # robot.go_to_free(
-        #     x_obj=0.2,
-        #     y_obj=2.6,
-        #     th_obj=np.pi/2
-        # )
-        
-        
-        # robot.go_to_free(
-        #     x_obj=0+.8,
-        #     y_obj=5*.4,
-        #     th_obj=np.pi/2
-        # )
-        
+       
         
         calibrate_before_recognition(robot, map_config['center_calibrate_position'], w_base=map_config['s_w_base'])
         
@@ -326,6 +315,8 @@ def main(args):
             # robot.waitAngle(3*np.pi/4)
             # robot.setSpeed(0, 0)
             print("Going left x:", map_config['l_position_x'])
+            robot.setSpeed(0, map_config['s_w_base'])
+            robot.waitAngle(3*np.pi/4, initial_w=-map_config['s_w_base'])
             robot.go_to_free(
                 x_obj=map_config['l_position_x'],
                 y_obj=map_config['final_position_y'],
@@ -336,11 +327,37 @@ def main(args):
             # robot.waitAngle(np.pi/4)
             # robot.setSpeed(0, 0)   
             print("Going right x:", map_config['r_position_x'])
-            robot.go_to_free(
-                x_obj=map_config['r_position_x'],
-                y_obj=map_config['final_position_y'],
-                th_obj=map_config['final_position_th']
+            actual_x, actual_y, actual_th = robot.readOdometry()
+            print("Actual position: ", actual_x, actual_y, actual_th)
+            if actual_th < np.pi/2:
+                robot.setSpeed(0, 0.5)
+                robot.waitAngle(np.pi/2, initial_w=-map_config['s_w_base']) 
+            else:
+                robot.setSpeed(0, -0.5)
+                robot.waitAngle(np.pi/2, initial_w=map_config['s_w_base'])
+            
+            # robot.calibrateOdometry(distObj=125, expected_y=actual_y-0.4)
+            robot.setSpeed(0, -map_config['s_w_base'])
+            robot.waitAngle(0, initial_w=-map_config['s_w_base'])
+            robot.setSpeed(0, 0)
+            robot.calibrateOdometry(distObj=30, expected_x=map_config['r_position_x']-0.2)
+            robot.setSpeed(0, map_config['s_w_base'])
+            robot.waitAngle(np.pi/2, initial_w=map_config['s_w_base'])
+            robot.setSpeed(0, 0)
+            v_base = 0.2
+            robot.setSpeed(v_base, 0)
+            robot.waitPositionWithWallCorrection(
+                x_deseado=map_config['r_position_x'],
+                y_deseado=map_config['final_position_y'],
+                v_base=v_base,
+                tolerancia=0.02
             )
+            robot.setSpeed(0, 0)
+            # robot.go_to_free(
+            #     x_obj=map_config['r_position_x'],
+            #     y_obj=map_config['final_position_y'],
+            #     th_obj=map_config['final_position_th']
+            # )
         
         # wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
